@@ -176,7 +176,6 @@
         let turrets = []; let placementMode = false;
         const maxTurrets = 10;
         
-        // STALE WORD VARIABLES
         let recentWords = [];
         const memorySize = 4;
 
@@ -224,7 +223,6 @@
             }
         });
 
-        // HELPER TO UPDATE SENTRY UI COST
         function updateTurretUI() {
             let cost = Math.floor(60 * Math.pow(1.2, turrets.length));
             const h1 = document.getElementById('hotkey-1');
@@ -272,18 +270,16 @@
                     if (targetIndex !== -1) {
                         const target = enemies[targetIndex];
                         
-                        // STALE WORD CHECK
                         if (recentWords.includes(cmd)) {
                             createExplosion(target.x, target.y, "#ff003c", target.type === 'boss' ? 100 : 50); 
                             addFloatingText(target.x, target.y, "STALE: 0 BYTES, -20 ENG", "#ff003c");
-                            currentMana -= 20; // Drain their economy as a penalty!
+                            currentMana -= 20; 
                         } else {
                             createExplosion(target.x, target.y, "#fff", target.type === 'boss' ? 100 : 50); 
                             playerStats.souls += target.maxHp * 30; 
                             addFloatingText(target.x, target.y, "DECRYPTED", "#fff");
                         }
 
-                        // Push word into memory (keeps it stale if spammed repeatedly)
                         recentWords.push(cmd);
                         if (recentWords.length > memorySize) recentWords.shift();
 
@@ -292,7 +288,7 @@
                     }
                 }
 
-                if (!commandSuccessful && wave > 0) { // No penalty during tutorial
+                if (!commandSuccessful && wave > 0) { 
                     shakeFrames = 5; currentMana -= 10; 
                     addFloatingText(canvas.width/2, canvas.height/2 + 50, "SYNTAX ERROR: -10 ENG", "#ff003c");
                     document.getElementById('mana-bar').style.background = "#ff003c";
@@ -305,7 +301,7 @@
             playerStats = { maxMana: 100, manaRegen: 0.2, smiteCost: 20, smiteDmg: 1, souls: 0, faith: 100, autoAtk: 0, autoHack: 0 };
             upgradeCosts = { maxMana: 150, regen: 200, dmg: 250, heal: 100, auto: 300, hack: 500 };
             currentMana = playerStats.maxMana; wave = 0; tutorialStep = 0; tutorialWait = 60; damageFlash = 0; autoNodes = []; turrets = []; bossWarningTimer = 0; spawnTimer = 0;
-            recentWords = []; // Reset word memory
+            recentWords = []; 
             
             updateTurretUI();
             terminalBox.style.boxShadow = "none";
@@ -345,7 +341,8 @@
                 enemiesToSpawn = 1; 
                 bossWarningTimer = 180; 
             } else { 
-                enemiesToSpawn = 5 + (wave * 3); 
+                // ENEMY COUNT SCALING BUFFED
+                enemiesToSpawn = 5 + Math.floor(Math.pow(wave, 1.4) * 4); 
                 bossWarningTimer = 0;
             }
             
@@ -405,11 +402,11 @@
         function spawnEnemy() {
             const rand = Math.random(); let type = 'bug'; 
             if (wave > 1 && rand < 0.3) type = 'worm';
-            if (wave > 1 && rand > 0.75) type = 'trojan'; 
+            if (wave > 1 && rand > 0.70) type = 'trojan'; 
+            if (wave > 3 && rand > 0.85) type = 'brute'; // NEW ENEMY LOGIC
 
             let e = { x: -40, y: Math.random() * (canvas.height - 150) + 75, type: type, shielded: false };
 
-            // EXPONENTIAL ENEMY SCALING
             let hpScale = Math.pow(1.20, wave > 1 ? wave - 1 : 0);
             let speedScale = Math.pow(1.05, wave > 1 ? wave - 1 : 0);
 
@@ -419,6 +416,8 @@
                 e.speed = 0.4 * speedScale; e.size = 28; e.maxHp = Math.floor(6 * hpScale); e.hp = e.maxHp; e.color = "#ff8800"; e.shielded = true; 
                 const dict = wave < 4 ? shortWords : shortWords.concat(longWords);
                 e.word = dict[Math.floor(Math.random() * dict.length)];
+            } else if (type === 'brute') {
+                e.speed = 0.25 * speedScale; e.size = 36; e.maxHp = Math.floor(20 * hpScale); e.hp = e.maxHp; e.color = "#8800ff"; e.shielded = false; 
             } else {
                 e.speed = (Math.random() * 1.0 + 0.8) * speedScale; e.size = 20; e.maxHp = Math.floor(2 * hpScale); e.hp = e.maxHp; e.color = "#d900ff"; 
             }
@@ -438,7 +437,6 @@
             }
 
             if (placementMode) {
-                // SENTRY EXPONENTIAL COST & LIMIT
                 let cost = Math.floor(60 * Math.pow(1.2, turrets.length));
                 
                 if (turrets.length >= maxTurrets) {
@@ -446,7 +444,7 @@
                     placementMode = false; gameContainer.classList.remove('placement-mode');
                 } else if (currentMana >= cost) {
                     currentMana -= cost;
-                    turrets.push({ x: clickX, y: clickY, hp: 8, maxHp: 8, cooldown: 0, size: 16, angle: 0 });
+                    turrets.push({ x: clickX, y: clickY, hp: 12, maxHp: 12, cooldown: 0, size: 16, angle: 0, level: 1 });
                     placementMode = false; gameContainer.classList.remove('placement-mode');
                     addFloatingText(clickX, clickY, "SENTRY ONLINE", "#39ff14");
                     createExplosion(clickX, clickY, "#39ff14", 10);
@@ -454,6 +452,31 @@
                 } else {
                     addFloatingText(clickX, clickY, "INSUFFICIENT ENG", "#ff003c");
                     placementMode = false; gameContainer.classList.remove('placement-mode');
+                }
+                return; 
+            }
+
+            // TURRET UPGRADE CLICK LOGIC
+            let clickedTurret = null;
+            for(let i=0; i<turrets.length; i++) {
+                if(Math.hypot(turrets[i].x - clickX, turrets[i].y - clickY) < turrets[i].size * 1.5) {
+                    clickedTurret = turrets[i]; break;
+                }
+            }
+
+            if (clickedTurret) {
+                let upgradeCost = clickedTurret.level === 1 ? 100 : (clickedTurret.level === 2 ? 250 : -1);
+                if (upgradeCost !== -1 && currentMana >= upgradeCost) {
+                    currentMana -= upgradeCost;
+                    clickedTurret.level++;
+                    clickedTurret.maxHp += 15;
+                    clickedTurret.hp = clickedTurret.maxHp;
+                    addFloatingText(clickX, clickY, `LVL ${clickedTurret.level} UPGRADE`, "#39ff14");
+                    createExplosion(clickX, clickY, "#00f3ff", 20);
+                } else if (upgradeCost === -1) {
+                    addFloatingText(clickX, clickY, "MAX LEVEL", "#00f3ff");
+                } else {
+                    addFloatingText(clickX, clickY, `NEED ${upgradeCost} ENG`, "#ff003c");
                 }
                 return; 
             }
@@ -645,7 +668,7 @@
             }
             if (tutorialStep === 6) {
                 ctx.fillStyle = "#39ff14"; ctx.font = "bold 30px 'VT323'"; ctx.textAlign = "center";
-                ctx.fillText("CLICK ANYWHERE ON THE GRID TO DEPLOY SENTRY", canvas.width/2, canvas.height/2 - 40);
+                ctx.fillText("CLICK TO DEPLOY SENTRY (CLICK IT AGAIN TO UPGRADE)", canvas.width/2, canvas.height/2 - 40);
                 
                 if (turrets.length > 0) {
                     tutorialStep = 7; tutorialWait = 120;
@@ -695,18 +718,22 @@
 
             for (let i = turrets.length - 1; i >= 0; i--) {
                 let t = turrets[i];
+                t.level = t.level || 1;
                 
+                let tColor = t.level === 1 ? "#39ff14" : (t.level === 2 ? "#ff8800" : "#d900ff");
+                t.size = 14 + (t.level * 3);
+
                 if (wave > 0) {
                     t.hp -= timeScale * 0.015; 
                 }
 
-                let target = enemies.find(e => !e.shielded && Math.hypot(e.x - t.x, e.y - t.y) < 200);
+                let target = enemies.find(e => !e.shielded && Math.hypot(e.x - t.x, e.y - t.y) < 200 + (t.level*30));
                 if (target) {
                     t.angle = Math.atan2(target.y - t.y, target.x - t.x);
                 }
 
                 ctx.fillStyle = "#050a0f";
-                ctx.strokeStyle = "#39ff14";
+                ctx.strokeStyle = tColor;
                 ctx.lineWidth = 2;
                 ctx.beginPath();
                 ctx.arc(t.x, t.y, t.size, 0, Math.PI * 2);
@@ -721,18 +748,21 @@
                 ctx.save();
                 ctx.translate(t.x, t.y);
                 ctx.rotate(t.angle);
-                ctx.fillStyle = "#39ff14";
-                ctx.fillRect(t.size * 0.3, -4, t.size * 0.9, 8);
+                ctx.fillStyle = tColor;
+                ctx.fillRect(t.size * 0.3, -4 - (t.level-1), t.size * 0.9, 8 + (t.level-1)*2);
                 ctx.restore();
 
                 ctx.fillStyle = "#ff003c"; ctx.fillRect(t.x - 12, t.y + 22, 24, 4);
                 ctx.fillStyle = "#39ff14"; ctx.fillRect(t.x - 12, t.y + 22, 24 * (t.hp / t.maxHp), 4);
 
                 t.cooldown -= timeScale;
+                let fireRate = t.level === 1 ? 45 : (t.level === 2 ? 25 : 12);
+                let dmg = t.level === 3 ? 2 : 1;
+
                 if (t.cooldown <= 0 && target) {
-                    target.hp -= 1;
-                    autoLasers.push({sx: t.x + Math.cos(t.angle) * (t.size*1.2), sy: t.y + Math.sin(t.angle) * (t.size*1.2), tx: target.x, ty: target.y, life: 10, color: "#39ff14"});
-                    t.cooldown = 45; 
+                    target.hp -= dmg;
+                    autoLasers.push({sx: t.x + Math.cos(t.angle) * (t.size*1.2), sy: t.y + Math.sin(t.angle) * (t.size*1.2), tx: target.x, ty: target.y, life: 10, color: tColor});
+                    t.cooldown = fireRate; 
                     if (target.hp <= 0) { createExplosion(target.x, target.y, target.color, 20); playerStats.souls += target.maxHp * 15; enemies.splice(enemies.indexOf(target), 1); }
                 }
 
@@ -744,7 +774,7 @@
                 }
 
                 if (t.hp <= 0) {
-                    createExplosion(t.x, t.y, "#39ff14", 30); 
+                    createExplosion(t.x, t.y, tColor, 30); 
                     turrets.splice(i, 1); 
                     updateTurretUI();
                 }
@@ -768,7 +798,6 @@
                     ctx.shadowBlur = 0; 
 
                     if (bossWarningTimer <= 0) {
-                        // EXPONENTIAL BOSS SCALING
                         let hpScale = Math.pow(1.20, wave > 1 ? wave - 1 : 0);
                         let speedScale = Math.pow(1.05, wave > 1 ? wave - 1 : 0);
 
@@ -781,7 +810,7 @@
                         enemiesToSpawn--; 
                     }
                 } else if (enemiesToSpawn > 0 && spawnTimer <= 0) {
-                    spawnEnemy(); spawnTimer = Math.max(40, 110 - (wave * 5)); 
+                    spawnEnemy(); spawnTimer = Math.max(15, 90 - (wave * 10)); // SPAWNS MUCH FASTER
                 } else if (enemiesToSpawn <= 0 && enemies.length === 0) {
                     setTimeout(openShop, 1200); gameState = 'WAITING'; 
                 }
