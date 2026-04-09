@@ -179,12 +179,13 @@
         let recentWords = [];
         const memorySize = 4;
 
-        let tutorialStep = 0; let tutorialWait = 60; let tutorialTarget = null;
-        let bossWarningTimer = 0;
-
         const shortWords = ["rm", "del", "die", "kill", "cut", "sys"];
         const longWords = ["purge", "void", "null", "drop", "wipe", "abort", "erase"];
         const bossWords = ["kernel_panic", "format_c", "override", "rm_rf_root"];
+        const cipherWords = ["cryptography", "asynchronous", "polymorphic", "encapsulation", "obfuscation", "vulnerability", "authentication", "infrastructure"];
+        
+        let tutorialStep = 0; let tutorialWait = 60; let tutorialTarget = null;
+        let bossWarningTimer = 0;
         
         const loreLogs = [
             "",
@@ -192,7 +193,7 @@
             "[SYS]: 'ROOT_ACCESS' FIREPOWER UPGRADE UNLOCKED.",
             "[SYS]: DAMAGE SUSTAINED. 'DEFRAG' REPAIR UTILITY COMPILED.",
             "[SYS]: DAEMON 'AUTO.EXE' HAS BEEN UNLOCKED. AUTOMATION READY.",
-            "[SYS]: WARNING: MASSIVE ANOMALY DETECTED IN NEXT SECTOR.",
+            "[SYS]: WARNING: COMPLEX ENCRYPTION 'CIPHERS' DETECTED AHEAD.",
             "[SYS]: DAEMON 'DECRYPTOR' HAS BEEN COMPILED. RADAR ONLINE.",
             "[SYS]: THE SWARM IS ADAPTING. PROCEED WITH CAUTION."
         ];
@@ -276,7 +277,9 @@
                             currentMana -= 20; 
                         } else {
                             createExplosion(target.x, target.y, "#fff", target.type === 'boss' ? 100 : 50); 
-                            playerStats.souls += target.maxHp * 30; 
+                            // Give extra reward for cipher enemies due to long words
+                            let rewardMult = target.type === 'cipher' ? 60 : 30; 
+                            playerStats.souls += target.maxHp * rewardMult; 
                             addFloatingText(target.x, target.y, "DECRYPTED", "#fff");
                         }
 
@@ -341,7 +344,6 @@
                 enemiesToSpawn = 1; 
                 bossWarningTimer = 180; 
             } else { 
-                // ENEMY COUNT SCALING BUFFED
                 enemiesToSpawn = 5 + Math.floor(Math.pow(wave, 1.4) * 4); 
                 bossWarningTimer = 0;
             }
@@ -401,9 +403,11 @@
 
         function spawnEnemy() {
             const rand = Math.random(); let type = 'bug'; 
-            if (wave > 1 && rand < 0.3) type = 'worm';
-            if (wave > 1 && rand > 0.70) type = 'trojan'; 
-            if (wave > 3 && rand > 0.85) type = 'brute'; // NEW ENEMY LOGIC
+            
+            if (wave > 1 && rand > 0.30 && rand <= 0.60) type = 'worm';
+            if (wave > 1 && rand > 0.60 && rand <= 0.80) type = 'trojan'; 
+            if (wave > 3 && rand > 0.80 && rand <= 0.90) type = 'brute'; 
+            if (wave > 4 && rand > 0.90) type = 'cipher'; // NEW CIPHER ENEMY
 
             let e = { x: -40, y: Math.random() * (canvas.height - 150) + 75, type: type, shielded: false };
 
@@ -418,6 +422,9 @@
                 e.word = dict[Math.floor(Math.random() * dict.length)];
             } else if (type === 'brute') {
                 e.speed = 0.25 * speedScale; e.size = 36; e.maxHp = Math.floor(20 * hpScale); e.hp = e.maxHp; e.color = "#8800ff"; e.shielded = false; 
+            } else if (type === 'cipher') {
+                e.speed = 0.3 * speedScale; e.size = 35; e.maxHp = Math.floor(10 * hpScale); e.hp = e.maxHp; e.color = "#00f3ff"; e.shielded = true; 
+                e.word = cipherWords[Math.floor(Math.random() * cipherWords.length)];
             } else {
                 e.speed = (Math.random() * 1.0 + 0.8) * speedScale; e.size = 20; e.maxHp = Math.floor(2 * hpScale); e.hp = e.maxHp; e.color = "#d900ff"; 
             }
@@ -578,10 +585,13 @@
             ctx.fillStyle = "#fff"; ctx.fillRect(e.x - 2, e.y - 2, 4, 4);
 
             if (e.shielded) {
-                ctx.strokeStyle = "#ff003c"; ctx.lineWidth = e.type === 'boss' ? 4 : 2; 
+                ctx.strokeStyle = e.color === "#00f3ff" ? "#00f3ff" : "#ff003c"; 
+                ctx.lineWidth = e.type === 'boss' ? 4 : 2; 
                 ctx.strokeRect(e.x - e.size, e.y - e.size, e.size*2, e.size*2);
-                ctx.fillStyle = "rgba(255,0,60,0.2)"; ctx.fillRect(e.x - e.size, e.y - e.size, e.size*2, e.size*2);
-                ctx.fillStyle = "#fff"; ctx.font = e.type === 'boss' ? "bold 30px 'VT323', monospace" : "bold 20px 'VT323', monospace"; 
+                ctx.fillStyle = e.color === "#00f3ff" ? "rgba(0,243,255,0.1)" : "rgba(255,0,60,0.2)"; 
+                ctx.fillRect(e.x - e.size, e.y - e.size, e.size*2, e.size*2);
+                ctx.fillStyle = "#fff"; 
+                ctx.font = e.type === 'boss' ? "bold 30px 'VT323', monospace" : "bold 18px 'VT323', monospace"; 
                 ctx.textAlign = "center"; ctx.fillText(e.word, e.x, e.y - e.size - 10);
             }
         }
