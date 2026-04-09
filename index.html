@@ -115,7 +115,7 @@
         <div class="ui-overlay" id="in-game-ui" style="display: none;">
             <div>
                 <div id="ui-faith" style="color: var(--term-green); font-size: 2.2rem; font-weight: bold;">SYS.HEALTH: 100%</div>
-                <div class="hotkey-bar" id="hotkey-1"><span>[ 1 ]</span> DEPLOY SENTRY (60 ENG | TEMP)</div>
+                <div class="hotkey-bar" id="hotkey-1"><span>[ 1 ]</span> DEPLOY SENTRY (60 ENG | 0/10)</div>
             </div>
             <div id="ui-wave" style="color: #fff; opacity: 0.5;">SECTOR: 1</div>
             <div id="ui-score" style="color: var(--term-cyan); font-size: 2.2rem;">BYTES: 0</div>
@@ -174,7 +174,12 @@
         let damageFlash = 0; let autoNodes = []; let glitchInterval = null; 
         
         let turrets = []; let placementMode = false;
+        const maxTurrets = 10;
         
+        // STALE WORD VARIABLES
+        let recentWords = [];
+        const memorySize = 4;
+
         let tutorialStep = 0; let tutorialWait = 60; let tutorialTarget = null;
         let bossWarningTimer = 0;
 
@@ -219,6 +224,15 @@
             }
         });
 
+        // HELPER TO UPDATE SENTRY UI COST
+        function updateTurretUI() {
+            let cost = Math.floor(60 * Math.pow(1.2, turrets.length));
+            const h1 = document.getElementById('hotkey-1');
+            if (h1) {
+                h1.innerHTML = `<span>[ 1 ]</span> DEPLOY SENTRY (${cost} ENG | ${turrets.length}/${maxTurrets})`;
+            }
+        }
+
         cmdInput.addEventListener('keydown', function(e) {
             if (e.key === 'Enter') {
                 const cmd = this.value.trim().toLowerCase(); this.value = '';
@@ -257,9 +271,22 @@
 
                     if (targetIndex !== -1) {
                         const target = enemies[targetIndex];
-                        createExplosion(target.x, target.y, "#fff", target.type === 'boss' ? 100 : 50); 
-                        playerStats.souls += target.maxHp * 30; 
-                        addFloatingText(target.x, target.y, "DECRYPTED", "#fff");
+                        
+                        // STALE WORD CHECK
+                        if (recentWords.includes(cmd)) {
+                            createExplosion(target.x, target.y, "#ff003c", target.type === 'boss' ? 100 : 50); 
+                            addFloatingText(target.x, target.y, "STALE: 0 BYTES, -20 ENG", "#ff003c");
+                            currentMana -= 20; // Drain their economy as a penalty!
+                        } else {
+                            createExplosion(target.x, target.y, "#fff", target.type === 'boss' ? 100 : 50); 
+                            playerStats.souls += target.maxHp * 30; 
+                            addFloatingText(target.x, target.y, "DECRYPTED", "#fff");
+                        }
+
+                        // Push word into memory (keeps it stale if spammed repeatedly)
+                        recentWords.push(cmd);
+                        if (recentWords.length > memorySize) recentWords.shift();
+
                         enemies.splice(targetIndex, 1);
                         commandSuccessful = true;
                     }
@@ -278,7 +305,9 @@
             playerStats = { maxMana: 100, manaRegen: 0.2, smiteCost: 20, smiteDmg: 1, souls: 0, faith: 100, autoAtk: 0, autoHack: 0 };
             upgradeCosts = { maxMana: 150, regen: 200, dmg: 250, heal: 100, auto: 300, hack: 500 };
             currentMana = playerStats.maxMana; wave = 0; tutorialStep = 0; tutorialWait = 60; damageFlash = 0; autoNodes = []; turrets = []; bossWarningTimer = 0; spawnTimer = 0;
-            document.getElementById('hotkey-1').style.color = "";
+            recentWords = []; // Reset word memory
+            
+            updateTurretUI();
             terminalBox.style.boxShadow = "none";
             
             ['dmg', 'heal', 'auto', 'hack'].forEach(id => {
@@ -303,6 +332,7 @@
             gameState = 'PLAYING';
             enemies = []; currentMana = playerStats.maxMana; damageFlash = 0;
             document.getElementById('ui-wave').textContent = `SECTOR: 0`;
+            updateTurretUI();
             cmdInput.focus();
         }
 
@@ -379,18 +409,21 @@
 
             let e = { x: -40, y: Math.random() * (canvas.height - 150) + 75, type: type, shielded: false };
 
+            // EXPONENTIAL ENEMY SCALING
+            let hpScale = Math.pow(1.20, wave > 1 ? wave - 1 : 0);
+            let speedScale = Math.pow(1.05, wave > 1 ? wave - 1 : 0);
+
             if (type === 'worm') {
-                e.speed = Math.random() * 1.5 + 2.0 + (wave * 0.05); e.size = 12; e.hp = 1; e.maxHp = 1; e.color = "#ff003c"; 
+                e.speed = (Math.random() * 1.5 + 2.0) * speedScale; e.size = 12; e.hp = 1; e.maxHp = 1; e.color = "#ff003c"; 
             } else if (type === 'trojan') {
-                e.speed = 0.4 + (wave * 0.02); e.size = 28; e.hp = 1; e.maxHp = 6; e.color = "#ff8800"; e.shielded = true; 
+                e.speed = 0.4 * speedScale; e.size = 28; e.maxHp = Math.floor(6 * hpScale); e.hp = e.maxHp; e.color = "#ff8800"; e.shielded = true; 
                 const dict = wave < 4 ? shortWords : shortWords.concat(longWords);
                 e.word = dict[Math.floor(Math.random() * dict.length)];
             } else {
-                let healthBonus = Math.floor(wave/3);
-                e.speed = Math.random() * 1.0 + 0.8 + (wave * 0.05); e.size = 20; e.hp = 2 + healthBonus; e.maxHp = 2 + healthBonus; e.color = "#d900ff"; 
+                e.speed = (Math.random() * 1.0 + 0.8) * speedScale; e.size = 20; e.maxHp = Math.floor(2 * hpScale); e.hp = e.maxHp; e.color = "#d900ff"; 
             }
             enemies.push(e);
-            enemiesToSpawn--; // <-- FIX: Decrement the spawn counter!
+            enemiesToSpawn--; 
         }
 
         canvas.addEventListener('mousedown', (e) => {
@@ -405,12 +438,19 @@
             }
 
             if (placementMode) {
-                if (currentMana >= 60) {
-                    currentMana -= 60;
+                // SENTRY EXPONENTIAL COST & LIMIT
+                let cost = Math.floor(60 * Math.pow(1.2, turrets.length));
+                
+                if (turrets.length >= maxTurrets) {
+                    addFloatingText(clickX, clickY, "CAPACITY REACHED", "#ff003c");
+                    placementMode = false; gameContainer.classList.remove('placement-mode');
+                } else if (currentMana >= cost) {
+                    currentMana -= cost;
                     turrets.push({ x: clickX, y: clickY, hp: 8, maxHp: 8, cooldown: 0, size: 16, angle: 0 });
                     placementMode = false; gameContainer.classList.remove('placement-mode');
                     addFloatingText(clickX, clickY, "SENTRY ONLINE", "#39ff14");
                     createExplosion(clickX, clickY, "#39ff14", 10);
+                    updateTurretUI();
                 } else {
                     addFloatingText(clickX, clickY, "INSUFFICIENT ENG", "#ff003c");
                     placementMode = false; gameContainer.classList.remove('placement-mode');
@@ -433,7 +473,6 @@
 
             for (let i = enemies.length - 1; i >= 0; i--) {
                 const enemy = enemies[i];
-                // FIX: Increased the base hit detection radius from 45 to 60 for easier clicking
                 if (Math.hypot(enemy.x - clickX, enemy.y - clickY) < 60 + enemy.size + (pwr*5)) {
                     if (enemy.shielded) {
                         addFloatingText(enemy.x, enemy.y, "ENCRYPTED", "#ff003c"); createExplosion(enemy.x, enemy.y, "#ff003c", 10); continue; 
@@ -594,13 +633,14 @@
                 ctx.fillText("PRESS [ 1 ] TO ENTER PLACEMENT MODE", canvas.width/2, canvas.height/2 - 40);
                 
                 const h1 = document.getElementById('hotkey-1');
-                h1.style.color = (frameCount % 30 < 15) ? "#fff" : "#39ff14";
-                h1.style.boxShadow = (frameCount % 60 < 30) ? "0 0 15px rgba(57, 255, 20, 0.5)" : "none";
+                if (h1) {
+                    h1.style.color = (frameCount % 30 < 15) ? "#fff" : "#39ff14";
+                    h1.style.boxShadow = (frameCount % 60 < 30) ? "0 0 15px rgba(57, 255, 20, 0.5)" : "none";
+                }
 
                 if (placementMode) { 
                     tutorialStep = 6; 
-                    h1.style.color = ""; 
-                    h1.style.boxShadow = "none";
+                    if(h1) { h1.style.color = ""; h1.style.boxShadow = "none"; }
                 }
             }
             if (tutorialStep === 6) {
@@ -704,7 +744,9 @@
                 }
 
                 if (t.hp <= 0) {
-                    createExplosion(t.x, t.y, "#39ff14", 30); turrets.splice(i, 1);
+                    createExplosion(t.x, t.y, "#39ff14", 30); 
+                    turrets.splice(i, 1); 
+                    updateTurretUI();
                 }
             }
 
@@ -726,10 +768,13 @@
                     ctx.shadowBlur = 0; 
 
                     if (bossWarningTimer <= 0) {
-                        
+                        // EXPONENTIAL BOSS SCALING
+                        let hpScale = Math.pow(1.20, wave > 1 ? wave - 1 : 0);
+                        let speedScale = Math.pow(1.05, wave > 1 ? wave - 1 : 0);
+
                         let e = { 
                             x: -80, y: canvas.height/2, type: 'boss', shielded: true, 
-                            speed: 0.15 + (wave * 0.01), size: 60, hp: 1, maxHp: 50, color: "#ff003c",
+                            speed: 0.15 * speedScale, size: 60, hp: 1, maxHp: Math.floor(50 * hpScale), color: "#ff003c",
                             word: bossWords[Math.floor(Math.random() * bossWords.length)]
                         };
                         enemies.push(e);
@@ -766,11 +811,11 @@
             for (let i = enemies.length - 1; i >= 0; i--) {
                 const enemy = enemies[i];
                 enemy.x += enemy.speed * timeScale;
-                // FIX: Reduced enemy up/down jitter from 10 to 4 so you can actually click them
                 if (frameCount % 10 === 0 && !enemy.shielded && enemy.type !== 'boss') enemy.y += ((Math.random() - 0.5) * 4) * timeScale;
 
                 if (enemy.type === 'boss' && frameCount % 120 === 0) {
-                    enemies.push({ x: enemy.x + 50, y: enemy.y + (Math.random()*80 - 40), type: 'worm', shielded: false, speed: 2.5 + (wave*0.05), size: 12, hp: 1, maxHp: 1, color: "#ff003c" });
+                    let speedScale = Math.pow(1.05, wave > 1 ? wave - 1 : 0);
+                    enemies.push({ x: enemy.x + 50, y: enemy.y + (Math.random()*80 - 40), type: 'worm', shielded: false, speed: (2.5) * speedScale, size: 12, hp: 1, maxHp: 1, color: "#ff003c" });
                 }
 
                 drawEnemy(enemy);
