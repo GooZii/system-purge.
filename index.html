@@ -13,7 +13,6 @@
             --bg-dark: #050a0f;
         }
 
-        /* Added fixed positioning and overscroll-behavior to strictly prevent tablet scrolling */
         body {
             font-family: 'VT323', monospace; background: #000; color: var(--term-green);
             display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -34,7 +33,6 @@
             border: 4px solid #112; box-shadow: 0 0 30px rgba(0, 243, 255, 0.1);
             display: flex; flex-direction: column; transition: box-shadow 0.3s, border-color 0.3s;
             border-radius: 8px; overflow: hidden;
-            /* Allow wrapper to scale down on smaller tablet screens if needed */
             max-width: 100vw; max-height: 100vh;
         }
         
@@ -175,7 +173,6 @@
     <div class="mana-bar-container"><div id="mana-bar"></div><div id="mana-text">100 / 100</div></div>
 
     <script>
-        // --- TABLET ANTI-SCROLL FAILSAFE ---
         window.addEventListener('scroll', () => { window.scrollTo(0, 0); });
         
         function toggleFullscreen() {
@@ -187,13 +184,11 @@
                 if (document.exitFullscreen) { document.exitFullscreen(); }
             }
         }
-        // -----------------------------------
 
         const canvas = document.getElementById('gameCanvas'); const ctx = canvas.getContext('2d');
         const cmdInput = document.getElementById('cmd-input'); const gameContainer = document.getElementById('game-container');
         const terminalBox = document.getElementById('terminal-box');
         
-        // --- WEB AUDIO API SYNTHESIZER ---
         const AudioContext = window.AudioContext || window.webkitAudioContext;
         let audioCtx;
         
@@ -214,7 +209,6 @@
         const sndError = () => { playTone(150, 'sawtooth', 0.3, 0.1); playTone(100, 'square', 0.4, 0.1); };
         const sndPing = () => { playTone(800, 'sine', 0.1, 0.1); setTimeout(() => playTone(1200, 'sine', 0.2, 0.1), 100); };
         const sndExplode = () => playTone(100, 'square', 0.4, 0.2);
-        // ---------------------------------
 
         let playerStats = { maxMana: 100, manaRegen: 0.2, smiteCost: 20, smiteDmg: 1, souls: 0, faith: 100, autoAtk: 0, autoHack: 0 };
         let upgradeCosts = { maxMana: 150, regen: 200, dmg: 250, heal: 100, auto: 300, hack: 500 };
@@ -231,9 +225,10 @@
         let recentWords = [];
         const memorySize = 4;
 
-        const shortWords = ["rm", "del", "die", "kill", "cut", "sys"];
-        const longWords = ["purge", "void", "null", "drop", "wipe", "abort", "erase"];
-        const bossWords = ["kernel_panic", "format_c", "override", "rm_rf_root"];
+        // Expanded Dictionaries!
+        const shortWords = ["rm", "del", "die", "kill", "cut", "sys", "hex", "bin", "exe", "bat", "cmd", "run", "log", "tmp", "dir", "net", "git", "ssh", "ftp", "ram", "cpu", "zip", "tar", "mac", "ip"];
+        const longWords = ["purge", "void", "null", "drop", "wipe", "abort", "erase", "crash", "reboot", "script", "hacker", "breach", "server", "upload", "packet", "botnet", "crypto", "malware", "trojan", "firewall", "bypass"];
+        const bossWords = ["kernel_panic", "format_c", "override", "rm_rf_root", "sudo_su", "ddos_attack", "buffer_overflow", "zero_day_exploit", "sql_injection", "rootkit_install"];
         
         let tutorialStep = 0; let tutorialWait = 60; let tutorialTarget = null;
         let bossWarningTimer = 0;
@@ -424,7 +419,8 @@
                 enemiesToSpawn = 1; 
                 bossWarningTimer = 180; 
             } else { 
-                enemiesToSpawn = 5 + Math.floor(Math.pow(wave, 1.4) * 4); 
+                // Much fairer linear scaling for late game
+                enemiesToSpawn = 5 + Math.floor(wave * 3); 
                 bossWarningTimer = 0;
             }
             
@@ -492,8 +488,9 @@
 
             let e = { x: -40, y: Math.random() * (canvas.height - 150) + 75, type: type, shielded: false };
 
-            let hpScale = Math.pow(1.20, wave > 1 ? wave - 1 : 0);
-            let speedScale = Math.pow(1.05, wave > 1 ? wave - 1 : 0);
+            // Balanced Linear Scaling!
+            let hpScale = 1 + (wave * 0.15);
+            let speedScale = 1 + (wave * 0.03);
 
             if (type === 'worm') {
                 e.speed = (Math.random() * 1.5 + 2.0) * speedScale; e.size = 12; e.hp = 1; e.maxHp = 1; e.color = "#ff003c"; 
@@ -520,7 +517,6 @@
             initAudio();
             if (gameState !== 'PLAYING') return;
             const rect = canvas.getBoundingClientRect(); 
-            // Scaled click detection for responsive wrapper
             const scaleX = canvas.width / rect.width;
             const scaleY = canvas.height / rect.height;
             const clickX = (e.clientX - rect.left) * scaleX; 
@@ -852,8 +848,8 @@
                     ctx.shadowBlur = 10; ctx.shadowColor = "#ff003c";
                     ctx.fillText("WARNING: KERNEL PANIC IMMINENT", canvas.width/2, canvas.height/2); ctx.shadowBlur = 0; 
                     if (bossWarningTimer <= 0) {
-                        let hpScale = Math.pow(1.20, wave > 1 ? wave - 1 : 0);
-                        let speedScale = Math.pow(1.05, wave > 1 ? wave - 1 : 0);
+                        let hpScale = 1 + (wave * 0.15);
+                        let speedScale = 1 + (wave * 0.03);
                         let e = { 
                             x: -80, y: canvas.height/2, type: 'boss', shielded: true, 
                             speed: 0.15 * speedScale, size: 60, hp: 1, maxHp: Math.floor(50 * hpScale), color: "#ff003c",
@@ -862,7 +858,9 @@
                         enemies.push(e); enemiesToSpawn--; 
                     }
                 } else if (enemiesToSpawn > 0 && spawnTimer <= 0) {
-                    spawnEnemy(); spawnTimer = Math.max(15, 90 - (wave * 10)); 
+                    spawnEnemy(); 
+                    // Balanced spawn timer! Minimum delay is capped much higher
+                    spawnTimer = Math.max(35, 90 - (wave * 5)); 
                 } else if (enemiesToSpawn <= 0 && enemies.length === 0) {
                     setTimeout(openShop, 1200); gameState = 'WAITING'; 
                 }
@@ -907,7 +905,7 @@
                 if (frameCount % 10 === 0 && !enemy.shielded && enemy.type !== 'boss') enemy.y += ((Math.random() - 0.5) * 4) * timeScale;
 
                 if (enemy.type === 'boss' && frameCount % 120 === 0) {
-                    let speedScale = Math.pow(1.05, wave > 1 ? wave - 1 : 0);
+                    let speedScale = 1 + (wave * 0.03);
                     enemies.push({ x: enemy.x + 50, y: enemy.y + (Math.random()*80 - 40), type: 'worm', shielded: false, speed: (2.5) * speedScale, size: 12, hp: 1, maxHp: 1, color: "#ff003c" });
                 }
 
