@@ -135,7 +135,7 @@
 
         <div class="terminal-container" id="terminal-box">
             <span class="prompt">C:\></span>
-            <input type="text" id="cmd-input" autocomplete="off" spellcheck="false" maxlength="20" autofocus>
+            <input type="text" id="cmd-input" autocomplete="off" spellcheck="false" maxlength="25" autofocus>
         </div>
 
         <div id="start-screen" class="screen active">
@@ -225,10 +225,10 @@
         let recentWords = [];
         const memorySize = 4;
 
-        // Expanded Dictionaries!
-        const shortWords = ["rm", "del", "die", "kill", "cut", "sys", "hex", "bin", "exe", "bat", "cmd", "run", "log", "tmp", "dir", "net", "git", "ssh", "ftp", "ram", "cpu", "zip", "tar", "mac", "ip"];
-        const longWords = ["purge", "void", "null", "drop", "wipe", "abort", "erase", "crash", "reboot", "script", "hacker", "breach", "server", "upload", "packet", "botnet", "crypto", "malware", "trojan", "firewall", "bypass"];
-        const bossWords = ["kernel_panic", "format_c", "override", "rm_rf_root", "sudo_su", "ddos_attack", "buffer_overflow", "zero_day_exploit", "sql_injection", "rootkit_install"];
+        // Expanded, REAL English words!
+        const shortWords = ["data", "wire", "core", "byte", "chip", "node", "link", "port", "disk", "ping", "boot", "host", "user", "file", "path", "code", "lock", "key", "scan", "task", "grid", "wave", "sync", "hash", "salt", "cache", "proxy", "admin", "token", "cloud"];
+        const longWords = ["network", "system", "memory", "access", "control", "process", "command", "digital", "virtual", "circuit", "gateway", "firewall", "security", "terminal", "hardware", "software", "database", "protocol", "bandwidth", "encrypt", "malware", "monitor", "server", "router", "traffic"];
+        const bossWords = ["mainframe_override", "system_breach", "critical_failure", "unauthorized_access", "recursive_loop", "neural_network", "quantum_compute", "encryption_key", "security_bypass", "hardware_malfunction", "denial_of_service"];
         
         let tutorialStep = 0; let tutorialWait = 60; let tutorialTarget = null;
         let bossWarningTimer = 0;
@@ -419,8 +419,8 @@
                 enemiesToSpawn = 1; 
                 bossWarningTimer = 180; 
             } else { 
-                // Much fairer linear scaling for late game
-                enemiesToSpawn = 5 + Math.floor(wave * 3); 
+                // Flatter progression for late game balance!
+                enemiesToSpawn = 5 + Math.floor(wave * 1.5); 
                 bossWarningTimer = 0;
             }
             
@@ -486,9 +486,23 @@
             if (wave > 4 && rand > 0.88 && rand <= 0.95) type = 'emp'; 
             if (wave > 4 && rand > 0.95) type = 'cipher'; 
 
-            let e = { x: -40, y: Math.random() * (canvas.height - 150) + 75, type: type, shielded: false };
+            // ANTI-OVERLAP LOGIC: Find a clear Y position so text doesn't mash together
+            let yPos;
+            let validPos = false;
+            let attempts = 0;
+            while (!validPos && attempts < 15) {
+                yPos = Math.random() * (canvas.height - 150) + 75;
+                validPos = true;
+                for (let i = 0; i < enemies.length; i++) {
+                    if (Math.abs(enemies[i].y - yPos) < 45) { // Ensure at least 45px vertical gap
+                        validPos = false; break;
+                    }
+                }
+                attempts++;
+            }
 
-            // Balanced Linear Scaling!
+            let e = { x: -40, y: yPos, type: type, shielded: false };
+
             let hpScale = 1 + (wave * 0.15);
             let speedScale = 1 + (wave * 0.03);
 
@@ -719,12 +733,12 @@
                 if (enemies.length === 0) { tutorialStep = 2; tutorialWait = 90; } 
             }
             if (tutorialStep === 2 && tutorialWait <= 0) {
-                tutorialTarget = { x: 150, y: canvas.height/2 + 80, type: 'trojan', shielded: true, speed: 0, size: 25, hp: 1, maxHp: 6, color: "#ff8800", word: 'sys' };
+                tutorialTarget = { x: 150, y: canvas.height/2 + 80, type: 'trojan', shielded: true, speed: 0, size: 25, hp: 1, maxHp: 6, color: "#ff8800", word: 'system' };
                 enemies.push(tutorialTarget); tutorialStep = 3; tutorialWait = 60;
             }
             if (tutorialStep === 3 && tutorialWait <= 0) {
                 ctx.fillStyle = "#ff003c"; ctx.font = "bold 30px 'VT323'"; ctx.textAlign = "left";
-                ctx.fillText("<- TYPE 'sys' AND PRESS ENTER", 220, canvas.height/2 + 90);
+                ctx.fillText("<- TYPE 'system' AND PRESS ENTER", 220, canvas.height/2 + 90);
                 terminalBox.style.boxShadow = (frameCount % 60 < 30) ? "inset 0 0 20px rgba(255, 0, 60, 0.8)" : "none";
                 
                 let pulse = (frameCount % 60) / 60;
@@ -859,8 +873,8 @@
                     }
                 } else if (enemiesToSpawn > 0 && spawnTimer <= 0) {
                     spawnEnemy(); 
-                    // Balanced spawn timer! Minimum delay is capped much higher
-                    spawnTimer = Math.max(35, 90 - (wave * 5)); 
+                    // Slower spawn delay curve to make late-game typing fair! Minimum gap is 50 frames.
+                    spawnTimer = Math.max(50, 100 - (wave * 3)); 
                 } else if (enemiesToSpawn <= 0 && enemies.length === 0) {
                     setTimeout(openShop, 1200); gameState = 'WAITING'; 
                 }
@@ -902,6 +916,7 @@
                 if (inTerritory) moveSpeed *= 0.4; 
                 
                 enemy.x += moveSpeed;
+                // Only let them drift slightly if they are NOT shielded (so text doesn't drift into each other)
                 if (frameCount % 10 === 0 && !enemy.shielded && enemy.type !== 'boss') enemy.y += ((Math.random() - 0.5) * 4) * timeScale;
 
                 if (enemy.type === 'boss' && frameCount % 120 === 0) {
