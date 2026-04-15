@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>System_Purge.exe v2.0</title>
+    <title>System_Purge.exe v3.0</title>
     <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -11,6 +11,7 @@
             --term-red: #ff003c;
             --term-cyan: #00f3ff;
             --term-orange: #ff8800;
+            --term-zephyr: #d900ff; /* World 2 Zephyrite Color */
             --bg-dark: #050a0f;
         }
 
@@ -79,6 +80,8 @@
 
         #story-text { color: var(--term-red); font-size: 2rem; text-align: center; margin-bottom: 20px; max-width: 80%; text-shadow: 2px 2px 0px #000, 0 0 10px var(--term-red); }
         .currency-display { font-size: 2.5rem; color: var(--term-cyan); margin-bottom: 20px; text-shadow: 0 0 8px var(--term-cyan); }
+        .currency-display span { color: var(--term-zephyr); text-shadow: 0 0 8px var(--term-zephyr); margin-left: 20px;}
+        .prestige-display { font-size: 1.8rem; color: var(--term-red); margin-bottom: 10px; text-shadow: 0 0 5px var(--term-red); display: none; }
 
         button {
             padding: 10px 25px; font-family: 'VT323', monospace; font-size: 1.8rem; letter-spacing: 1px;
@@ -156,6 +159,8 @@
                 <div id="hk-2" class="building-option"><span class="key">[ 2 ]</span> FIREWALL (40)</div>
                 <div id="hk-3" class="building-option"><span class="key">[ 3 ]</span> MINE (30)</div>
                 <div id="hk-4" class="building-option" style="display:none;"><span class="key">[ 4 ]</span> PULSE (120)</div>
+                <div id="hk-5" class="building-option" style="display:none;"><span class="key">[ 5 ]</span> Z-SENTRY (<span style="color:var(--term-zephyr)">50Z</span>)</div>
+                <div id="hk-6" class="building-option" style="display:none;"><span class="key">[ 6 ]</span> P-MORTAR (<span style="color:var(--term-zephyr)">100Z</span>)</div>
             </div>
         </div>
 
@@ -177,7 +182,9 @@
         <div id="shop-screen" class="screen">
             <h1 style="font-size: 3rem; color: #fff; margin-bottom: 5px;">TERMINAL UPLINK</h1>
             <div id="story-text"></div>
-            <div class="currency-display" id="shop-souls">BYTES: 0</div>
+            <div class="currency-display" id="shop-souls">BYTES: 0 <span id="shop-zephyrite" style="display:none;">ZEPHYRITE: 0</span></div>
+            <div class="prestige-display" id="shop-prestige">DAMAGE MULTIPLIER: 1.0x</div>
+            <button id="btn-prestige" onclick="doPrestige()" style="display: none; background: var(--term-red); color: white; margin-bottom: 15px;">[ INITIATE PRESTIGE LOOP ]</button>
             <div class="shop-grid">
                 <div class="upgrade-card tier-1"><h3>[ CAPACITY ]</h3><p>+Max Energy</p><span class="cost" id="cost-max-mana">COST: 150</span><button id="btn-up-mana" onclick="buyUpgrade('maxMana')">INSTALL</button></div>
                 <div class="upgrade-card tier-1"><h3>[ OVERCLOCK ]</h3><p>+Energy Regen</p><span class="cost" id="cost-regen">COST: 200</span><button id="btn-up-regen" onclick="buyUpgrade('regen')">INSTALL</button></div>
@@ -235,14 +242,18 @@
         const sndBossHit = () => { playTone(200, 'sawtooth', 0.5, 0.2); playTone(150, 'square', 0.6, 0.2); };
         const sndPulse = () => playTone(150, 'sine', 0.5, 0.3);
 
-        let playerStats = { maxMana: 100, manaRegen: 0.2, smiteCost: 20, smiteDmg: 1, souls: 0, faith: 100, autoAtk: 0, autoHack: 0, smiteSplash: false };
+        // ADDED: zephyrite to playerStats
+        let playerStats = { maxMana: 100, manaRegen: 0.2, smiteCost: 20, smiteDmg: 1, souls: 0, zephyrite: 0, faith: 100, autoAtk: 0, autoHack: 0, smiteSplash: false };
         let upgradeCosts = { maxMana: 150, regen: 200, dmg: 250, heal: 100, auto: 300, hack: 500, splash: 800 };
         
+        let prestigeMult = 1.0; let prestigeLevel = 0; 
+        let zephyrUnlocked = false; // Tracks if World 2 towers are available
+
         let gameState = 'START'; let currentMana = playerStats.maxMana;
         let wave = 0, enemiesToSpawn = 0, spawnTimer = 0, shakeFrames = 0, frameCount = 0;
         let enemies = [], scorchMarks = [], lightnings = [], autoLasers = [], particles = [], floatingTexts = [];
         let damageFlash = 0; let autoNodes = []; let glitchInterval = null; 
-        let empTimer = 0; let activeBoss = null; let iFrames = 0; // NEW: I-Frames
+        let empTimer = 0; let activeBoss = null; let iFrames = 0;
         let dreadnoughtLaserY = -1; let dreadnoughtCharge = 0;
         
         let buildings = []; let placementMode = null; const maxBuildings = 20;
@@ -268,7 +279,8 @@
             "[SYS]: WARNING: EMP SHOCKWAVES DETECTED. PROTECT BUILDINGS.",
             "[SYS]: NEW SCHEMATIC: PULSE TOWER DECRYPTED. USE HOTKEY [4].",
             "[SYS]: SECTOR ESCALATION. HEAVY ARMOR UNITS DETECTED.",
-            "[SYS]: 'QUANTUM' UPGRADE UNLOCKED. SMITE SPLASH DAMAGE AVAILABLE."
+            "[SYS]: 'QUANTUM' UPGRADE UNLOCKED. SMITE SPLASH DAMAGE AVAILABLE.",
+            "[SYS]: WARNING: PLANET ZEPHYR BREACHED. HARVESTING ZEPHYRITE." // World 2 lore log
         ];
 
         let highScore = localStorage.getItem('sysPurgeHighScore') || 0;
@@ -295,6 +307,8 @@
                 if (e.key === '2') { e.preventDefault(); togglePlacement('firewall'); }
                 if (e.key === '3') { e.preventDefault(); togglePlacement('mine'); }
                 if (e.key === '4' && pulseUnlocked) { e.preventDefault(); togglePlacement('pulse'); }
+                if (e.key === '5' && zephyrUnlocked) { e.preventDefault(); togglePlacement('zephyr_sentry'); }
+                if (e.key === '6' && zephyrUnlocked) { e.preventDefault(); togglePlacement('plasma_mortar'); }
             }
         });
 
@@ -312,6 +326,10 @@
             document.getElementById('hk-2').classList.remove('active');
             document.getElementById('hk-3').classList.remove('active');
             if (pulseUnlocked) document.getElementById('hk-4').classList.remove('active');
+            if (zephyrUnlocked) {
+                document.getElementById('hk-5').classList.remove('active');
+                document.getElementById('hk-6').classList.remove('active');
+            }
             
             if (placementMode) {
                 tooltipBox.style.display = 'block';
@@ -319,6 +337,8 @@
                 if (placementMode === 'firewall') tooltipBox.textContent = "[ FIREWALL ] Blocks and stalls incoming enemies.";
                 if (placementMode === 'mine') tooltipBox.textContent = "[ MINE ] Explodes on contact for massive area damage.";
                 if (placementMode === 'pulse') tooltipBox.textContent = "[ PULSE ] Charges up over time to damage all nearby enemies.";
+                if (placementMode === 'zephyr_sentry') tooltipBox.textContent = "[ Z-SENTRY ] Rapid-fire plasma using Zephyrite.";
+                if (placementMode === 'plasma_mortar') tooltipBox.textContent = "[ P-MORTAR ] Heavy area-of-effect Zephyrite artillery.";
             } else {
                 tooltipBox.style.display = 'none';
             }
@@ -327,6 +347,8 @@
             if (placementMode === 'firewall') document.getElementById('hk-2').classList.add('active');
             if (placementMode === 'mine') document.getElementById('hk-3').classList.add('active');
             if (placementMode === 'pulse') document.getElementById('hk-4').classList.add('active');
+            if (placementMode === 'zephyr_sentry') document.getElementById('hk-5').classList.add('active');
+            if (placementMode === 'plasma_mortar') document.getElementById('hk-6').classList.add('active');
 
             let sentriesCount = buildings.filter(b => b.type === 'sentry').length;
             let costSentry = Math.floor(60 * Math.pow(1.2, sentriesCount));
@@ -346,6 +368,12 @@
             } else if (type === 'pulse') {
                 buildings.push({ type: 'pulse', x: x, y: y, hp: 20, maxHp: 20, charge: 0, radius: 80, encrypted: false });
                 addFloatingText(x, y, "PULSE TOWER ACTIVE", "#d900ff"); createExplosion(x, y, "#d900ff", 15);
+            } else if (type === 'zephyr_sentry') {
+                buildings.push({ type: 'zephyr_sentry', x: x, y: y, hp: 40, maxHp: 40, cooldown: 0, size: 18, angle: 0, territory: 150, encrypted: false });
+                addFloatingText(x, y, "Z-SENTRY ONLINE", "var(--term-zephyr)"); createExplosion(x, y, "var(--term-zephyr)", 20);
+            } else if (type === 'plasma_mortar') {
+                buildings.push({ type: 'plasma_mortar', x: x, y: y, hp: 30, maxHp: 30, cooldown: 0, size: 20, territory: 250, encrypted: false });
+                addFloatingText(x, y, "P-MORTAR DEPLOYED", "var(--term-zephyr)"); createExplosion(x, y, "var(--term-zephyr)", 20);
             }
             sndPing(); updatePlacementUI();
         }
@@ -376,7 +404,7 @@
                         createExplosion(buildings[i].x, buildings[i].y, "#00f3ff", 20);
                         addFloatingText(buildings[i].x, buildings[i].y, "DECRYPTED", "#00f3ff");
                         sndPing(); commandSuccessful = true;
-                        return; // Exit out, prioritize building unlock over hitting enemies
+                        return; 
                     }
                 }
 
@@ -400,7 +428,9 @@
                         for (let i = enemies.length - 1; i >= 0; i--) {
                             if (!enemies[i].shielded && enemies[i].type !== 'boss') {
                                 createExplosion(enemies[i].x, enemies[i].y, enemies[i].color, 30);
-                                playerStats.souls += enemies[i].maxHp * 15; enemies.splice(i, 1);
+                                playerStats.souls += enemies[i].maxHp * 15;
+                                if (wave > 10) playerStats.zephyrite += Math.ceil(enemies[i].maxHp * 2);
+                                enemies.splice(i, 1);
                             }
                         }
                     } else { addFloatingText(canvas.width/2, canvas.height/2, "OUT OF MANA", "#ff003c"); sndError(); }
@@ -415,18 +445,20 @@
                     if (targetIndex !== -1) {
                         const target = enemies[targetIndex];
                         
-                        // TYPING TARGET FIX: Removed Stale Penalty for valid enemy hits entirely.
                         if (target.type === 'boss') {
                             createExplosion(target.x, target.y, "#fff", 100); target.shielded = false; 
                             addFloatingText(target.x, target.y, "FIREWALL BREACHED!", "#39ff14"); sndPing(); shakeFrames = 15;
                         } else {
                             createExplosion(target.x, target.y, "#fff", target.type === 'cipher' ? 50 : 30); 
-                            let rewardMult = target.type === 'cipher' ? 60 : 30; playerStats.souls += target.maxHp * rewardMult; 
+                            let rewardMult = target.type === 'cipher' ? 60 : 30; playerStats.souls += target.maxHp * rewardMult;
+                            if(wave > 10) {
+                                let zReward = Math.ceil(target.maxHp * 2); playerStats.zephyrite += zReward;
+                                addFloatingText(target.x, target.y + 15, `+${zReward}Z`, "var(--term-zephyr)");
+                            } 
                             addFloatingText(target.x, target.y, "DECRYPTED", "#fff"); sndPing(); enemies.splice(targetIndex, 1); 
                         }
                         commandSuccessful = true;
                     } else if (recentWords.includes(cmd)) {
-                        // Only punish stale words if they DON'T match an alive enemy
                         shakeFrames = 3; addFloatingText(canvas.width/2, canvas.height/2 + 50, "STALE: -20 ENG", "#ff003c");
                         currentMana -= 20; sndError(); commandSuccessful = true;
                     }
@@ -444,12 +476,18 @@
             }
         });
 
-        function resetGame() {
-            playerStats = { maxMana: 100, manaRegen: 0.2, smiteCost: 20, smiteDmg: 1, souls: 0, faith: 100, autoAtk: 0, autoHack: 0, smiteSplash: false };
+        function doPrestige() {
+            prestigeLevel++;
+            prestigeMult += 0.5; // +50% Damage per prestige
+            playerStats = { maxMana: 100, manaRegen: 0.2, smiteCost: 20, smiteDmg: 1, souls: 0, zephyrite: 0, faith: 100, autoAtk: 0, autoHack: 0, smiteSplash: false };
             upgradeCosts = { maxMana: 150, regen: 200, dmg: 250, heal: 100, auto: 300, hack: 500, splash: 800 };
-            currentMana = playerStats.maxMana; wave = 0; tutorialStep = 0; tutorialWait = 60; damageFlash = 0; autoNodes = []; buildings = []; bossWarningTimer = 0; spawnTimer = 0;
-            recentWords = []; empTimer = 0; placementMode = null; pulseUnlocked = false; activeBoss = null; iFrames = 0;
-            document.getElementById('hk-4').style.display = 'none'; bossOverlay.style.opacity = '0';
+            currentMana = playerStats.maxMana; wave = 0; damageFlash = 0; autoNodes = []; buildings = []; bossWarningTimer = 0; spawnTimer = 0;
+            recentWords = []; empTimer = 0; placementMode = null; pulseUnlocked = false; zephyrUnlocked = false; activeBoss = null; iFrames = 0;
+            document.getElementById('hk-4').style.display = 'none'; 
+            document.getElementById('hk-5').style.display = 'none'; 
+            document.getElementById('hk-6').style.display = 'none'; 
+            bossOverlay.style.opacity = '0';
+            document.getElementById('shop-zephyrite').style.display = 'none';
             
             updatePlacementUI(); terminalBox.style.boxShadow = "none"; gameContainer.classList.remove('placement-mode');
             
@@ -457,6 +495,38 @@
                 document.getElementById(`card-${id}`).style.display = 'none';
                 document.getElementById(`tag-${id}`).style.display = 'block';
             });
+            document.getElementById('btn-up-splash').disabled = false; document.getElementById('btn-up-splash').textContent = "INSTALL";
+            
+            document.getElementById('shop-prestige').style.display = 'block';
+            document.getElementById('shop-prestige').textContent = `DAMAGE MULTIPLIER: ${prestigeMult.toFixed(1)}x`;
+            document.getElementById('btn-prestige').style.display = 'none'; 
+            
+            startNextWave();
+        }
+
+        function resetGame() {
+            prestigeMult = 1.0; prestigeLevel = 0;
+            document.getElementById('shop-prestige').style.display = 'none';
+            document.getElementById('btn-prestige').style.display = 'none';
+            
+            playerStats = { maxMana: 100, manaRegen: 0.2, smiteCost: 20, smiteDmg: 1, souls: 0, zephyrite: 0, faith: 100, autoAtk: 0, autoHack: 0, smiteSplash: false };
+            upgradeCosts = { maxMana: 150, regen: 200, dmg: 250, heal: 100, auto: 300, hack: 500, splash: 800 };
+            currentMana = playerStats.maxMana; wave = 0; tutorialStep = 0; tutorialWait = 60; damageFlash = 0; autoNodes = []; buildings = []; bossWarningTimer = 0; spawnTimer = 0;
+            recentWords = []; empTimer = 0; placementMode = null; pulseUnlocked = false; zephyrUnlocked = false; activeBoss = null; iFrames = 0;
+            
+            document.getElementById('hk-4').style.display = 'none'; 
+            document.getElementById('hk-5').style.display = 'none'; 
+            document.getElementById('hk-6').style.display = 'none'; 
+            document.getElementById('shop-zephyrite').style.display = 'none';
+            bossOverlay.style.opacity = '0';
+            
+            updatePlacementUI(); terminalBox.style.boxShadow = "none"; gameContainer.classList.remove('placement-mode');
+            
+            ['dmg', 'heal', 'auto', 'hack', 'splash'].forEach(id => {
+                document.getElementById(`card-${id}`).style.display = 'none';
+                document.getElementById(`tag-${id}`).style.display = 'block';
+            });
+            document.getElementById('btn-up-splash').disabled = false; document.getElementById('btn-up-splash').textContent = "INSTALL";
             
             document.getElementById('game-over-screen').classList.remove('active'); gameState = 'START';
             document.getElementById('boot-log').innerHTML = `> WAITING FOR USER INPUT...<br>> TO INITIATE SEQUENCE, TYPE: <span class="log-cmd">sys.boot</span> IN TERMINAL BELOW.`;
@@ -478,6 +548,12 @@
             enemies = []; scorchMarks = []; particles = []; floatingTexts = []; autoLasers = [];
             
             if (wave === 8) { pulseUnlocked = true; document.getElementById('hk-4').style.display = 'block'; }
+            if (wave === 11) { 
+                zephyrUnlocked = true; 
+                document.getElementById('hk-5').style.display = 'block'; 
+                document.getElementById('hk-6').style.display = 'block'; 
+                document.getElementById('shop-zephyrite').style.display = 'inline';
+            }
 
             if (wave > 0 && wave % 5 === 0) {
                 enemiesToSpawn = 1; bossWarningTimer = 180; 
@@ -499,12 +575,14 @@
             if (wave >= 4) document.getElementById('card-auto').style.display = 'block';
             if (wave >= 6) document.getElementById('card-hack').style.display = 'block';
             if (wave >= 10) document.getElementById('card-splash').style.display = 'block';
+            
+            if (wave >= 15) document.getElementById('btn-prestige').style.display = 'inline-block';
 
             updateShopUI();
         }
 
         function updateShopUI() {
-            document.getElementById('shop-souls').textContent = `BYTES: ${playerStats.souls}`;
+            document.getElementById('shop-souls').innerHTML = `BYTES: ${playerStats.souls} <span id="shop-zephyrite" style="display:${zephyrUnlocked ? 'inline' : 'none'};">ZEPHYRITE: ${playerStats.zephyrite}</span>`;
             ['maxMana', 'regen', 'dmg', 'heal', 'auto', 'hack', 'splash'].forEach(type => {
                 if (document.getElementById(`cost-${type.toLowerCase()}`)) document.getElementById(`cost-${type.toLowerCase()}`).textContent = `COST: ${upgradeCosts[type]}`;
             });
@@ -557,7 +635,8 @@
             }
 
             let e = { x: -40, y: yPos, type: type, shielded: false, alpha: 1.0 };
-            let hpScale = 1 + (wave * 0.20); let speedScale = 1 + (wave * 0.04);
+            let hpScale = 1 + (wave * 0.20) + (prestigeLevel * 1.5); 
+            let speedScale = 1 + (wave * 0.04);
 
             if (type === 'worm') {
                 e.speed = (Math.random() * 1.5 + 2.0) * speedScale; e.size = 12; e.hp = 1; e.maxHp = 1; e.color = "#ff003c"; 
@@ -593,18 +672,22 @@
             }
 
             if (placementMode) {
-                let cost = 0;
-                if (placementMode === 'sentry') cost = Math.floor(60 * Math.pow(1.2, buildings.filter(b=>b.type==='sentry').length));
-                if (placementMode === 'firewall') cost = 40;
-                if (placementMode === 'mine') cost = 30;
-                if (placementMode === 'pulse') cost = 120;
+                let costBytes = 0; let costZeph = 0;
+                if (placementMode === 'sentry') costBytes = Math.floor(60 * Math.pow(1.2, buildings.filter(b=>b.type==='sentry').length));
+                if (placementMode === 'firewall') costBytes = 40;
+                if (placementMode === 'mine') costBytes = 30;
+                if (placementMode === 'pulse') costBytes = 120;
+                if (placementMode === 'zephyr_sentry') costZeph = 50;
+                if (placementMode === 'plasma_mortar') costZeph = 100;
 
                 if (buildings.length >= maxBuildings) {
                     addFloatingText(clickX, clickY, "CAPACITY REACHED", "#ff003c"); sndError(); togglePlacement(placementMode);
-                } else if (currentMana >= cost) {
-                    currentMana -= cost; addBuilding(placementMode, clickX, clickY); togglePlacement(placementMode);
+                } else if (costBytes > 0 && currentMana >= costBytes) {
+                    currentMana -= costBytes; addBuilding(placementMode, clickX, clickY); togglePlacement(placementMode);
+                } else if (costZeph > 0 && playerStats.zephyrite >= costZeph) {
+                    playerStats.zephyrite -= costZeph; addBuilding(placementMode, clickX, clickY); togglePlacement(placementMode);
                 } else {
-                    addFloatingText(clickX, clickY, "INSUFFICIENT ENG", "#ff003c"); sndError(); togglePlacement(placementMode);
+                    addFloatingText(clickX, clickY, costZeph > 0 ? "INSUFFICIENT ZEPH" : "INSUFFICIENT ENG", "#ff003c"); sndError(); togglePlacement(placementMode);
                 }
                 return; 
             }
@@ -618,10 +701,14 @@
 
             if (clickedBuilding && clickedBuilding.type === 'sentry') {
                 if (clickedBuilding.encrypted) { addFloatingText(clickX, clickY, "ENCRYPTED - TYPE TO UNLOCK", "#ff003c"); sndError(); return; }
-                let upgCost = clickedBuilding.level === 1 ? 100 : (clickedBuilding.level === 2 ? 250 : (clickedBuilding.level === 3 ? 500 : (clickedBuilding.level === 4 ? 1000 : -1)));
+                let upgCost = clickedBuilding.level === 1 ? 100 : (clickedBuilding.level === 2 ? 250 : (clickedBuilding.level === 3 ? 500 : (clickedBuilding.level === 4 ? 800 : -1)));
                 if (upgCost !== -1 && currentMana >= upgCost) {
                     currentMana -= upgCost; clickedBuilding.level++; clickedBuilding.maxHp += 20; clickedBuilding.hp = clickedBuilding.maxHp; clickedBuilding.territory += 40;
-                    addFloatingText(clickX, clickY, `LVL ${clickedBuilding.level} UPGRADE`, "#39ff14"); createExplosion(clickX, clickY, "#00f3ff", 20); sndPing();
+                    if (clickedBuilding.level === 5) {
+                        addFloatingText(clickX, clickY, `OMEGA SENTRY`, "#ff003c"); createExplosion(clickX, clickY, "#ff003c", 40); sndPulse();
+                    } else {
+                        addFloatingText(clickX, clickY, `LVL ${clickedBuilding.level} UPGRADE`, "#39ff14"); createExplosion(clickX, clickY, "#00f3ff", 20); sndPing();
+                    }
                 } else if (upgCost === -1) { addFloatingText(clickX, clickY, "MAX LEVEL", "#00f3ff"); sndError();
                 } else { addFloatingText(clickX, clickY, `NEED ${upgCost} ENG`, "#ff003c"); sndError(); }
                 return; 
@@ -641,22 +728,27 @@
                 const enemy = enemies[i];
                 if (Math.hypot(enemy.x - clickX, enemy.y - clickY) < smiteRadius + enemy.size) {
                     if (enemy.shielded) { addFloatingText(enemy.x, enemy.y, "ENCRYPTED", "#ff003c"); createExplosion(enemy.x, enemy.y, "#ff003c", 10); continue; }
-                    if (enemy.type === 'phantom' && enemy.alpha < 0.5) continue; // Phantoms dodge smites when invisible
+                    if (enemy.type === 'phantom' && enemy.alpha < 0.5) continue; 
 
-                    enemy.hp -= playerStats.smiteDmg; 
+                    enemy.hp -= (playerStats.smiteDmg * prestigeMult); 
                     
                     if (enemy.hp <= 0) {
                         createExplosion(enemy.x, enemy.y, enemy.color, 50); 
                         if (enemy.type === 'boss') {
                             playerStats.souls += 1000; playerStats.faith = 100;
+                            if (wave > 10) { playerStats.zephyrite += 200; addFloatingText(enemy.x, enemy.y + 20, "+200 ZEPH", "var(--term-zephyr)"); }
                             addFloatingText(enemy.x, enemy.y, "BOSS DEFEATED: +1000 BYTES", "#39ff14"); addFloatingText(canvas.width/2, canvas.height/2, "SYSTEM FULLY RESTORED", "#39ff14");
                             shakeFrames = 30; damageFlash = 0.8; activeBoss = null; bossOverlay.style.opacity = '0';
                         } else {
                             playerStats.souls += enemy.maxHp * 15; addFloatingText(enemy.x, enemy.y, `+${enemy.maxHp * 15}`, "#fff");
+                            if (wave > 10) {
+                                let zDrop = Math.ceil(enemy.maxHp * 2); playerStats.zephyrite += zDrop;
+                                addFloatingText(enemy.x, enemy.y + 15, `+${zDrop}Z`, "var(--term-zephyr)");
+                            }
                         }
                         enemies.splice(i, 1);
                     } else {
-                        createExplosion(enemy.x, enemy.y, "#fff", 10); addFloatingText(enemy.x, enemy.y, `HIT (-${playerStats.smiteDmg})`, "#fff");
+                        createExplosion(enemy.x, enemy.y, "#fff", 10); addFloatingText(enemy.x, enemy.y, `HIT`, "#fff");
                         if(enemy.type === 'boss') sndBossHit();
                     }
                 }
@@ -681,7 +773,6 @@
             if (damageFlash > 0) ctx.fillStyle = `rgba(255, 0, 60, ${damageFlash})`;
             ctx.fillRect(baseX - 15, 30, 8, canvas.height - 60);
 
-            // Render Invincibility Frame Shield Effect
             if (iFrames > 0 && frameCount % 10 < 5) {
                 ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
                 ctx.fillRect(baseX - 25, 30, 10, canvas.height - 60);
@@ -721,23 +812,22 @@
             ctx.save(); ctx.globalAlpha = e.alpha !== undefined ? e.alpha : 1.0;
             if (e.type === 'boss') {
                 ctx.translate(e.x, e.y);
-                // Boss Breathing Scale Animation
                 let bossScale = 1 + Math.sin(frameCount * 0.05) * 0.05;
                 ctx.scale(bossScale, bossScale);
 
                 if (e.subType === 'swarm_queen') {
                     let pulse = Math.sin(frameCount * 0.1) * 10;
                     ctx.fillStyle = e.color; ctx.beginPath(); ctx.arc(0, 0, (e.size/2) + pulse, 0, Math.PI*2); ctx.fill();
-                    ctx.strokeStyle = "#ff003c"; ctx.lineWidth = 4; ctx.stroke();
+                    ctx.strokeStyle = e.isPhase2 ? "#fff" : "#ff003c"; ctx.lineWidth = 4; ctx.stroke();
                     ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(0, 0, e.size/4, 0, Math.PI*2); ctx.fill();
                 } else if (e.subType === 'dreadnought') {
                     ctx.fillStyle = e.color; ctx.fillRect(-e.size/2, -e.size/2, e.size, e.size);
-                    ctx.fillStyle = "#000"; ctx.fillRect(-e.size/4, -e.size/2, e.size/2, e.size);
+                    ctx.fillStyle = e.isPhase2 ? "#ff003c" : "#000"; ctx.fillRect(-e.size/4, -e.size/2, e.size/2, e.size);
                     ctx.fillStyle = "#fff"; ctx.fillRect(e.size/4, -5, 15, 10);
                 } else if (e.subType === 'cryptolocker') {
                     ctx.rotate(frameCount * 0.05);
                     ctx.fillStyle = e.color; ctx.beginPath(); ctx.moveTo(0, -e.size/2); ctx.lineTo(e.size/2, 0); ctx.lineTo(0, e.size/2); ctx.lineTo(-e.size/2, 0); ctx.fill();
-                    ctx.strokeStyle = "#fff"; ctx.lineWidth = 3; ctx.stroke();
+                    ctx.strokeStyle = e.isPhase2 ? "#ff003c" : "#fff"; ctx.lineWidth = 3; ctx.stroke();
                     ctx.rotate(-frameCount * 0.1); ctx.strokeRect(-e.size/3, -e.size/3, (e.size/3)*2, (e.size/3)*2);
                 }
             } else if (e.type === 'egg') {
@@ -787,7 +877,7 @@
 
         function showGameOverScreen() {
             gameState = 'GAMEOVER'; let finalScoreBox = document.getElementById('final-score');
-            let sectorsCleared = wave - 1;
+            let sectorsCleared = wave - 1 + (prestigeLevel * 15);
             if (sectorsCleared > highScore) {
                 localStorage.setItem('sysPurgeHighScore', sectorsCleared); highScore = sectorsCleared;
                 finalScoreBox.innerHTML = `SECTORS CLEARED: ${sectorsCleared}<br><span style="color:var(--term-green);">NEW SYSTEM RECORD!</span>`;
@@ -803,7 +893,6 @@
 
             ctx.fillStyle = focusMode ? "rgba(0, 8, 20, 0.4)" : "rgba(2, 4, 8, 1.0)"; ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // Boss Visual Overlay
             if (activeBoss) {
                 let bgTheme = activeBoss.subType === 'swarm_queen' ? "rgba(255,0,60,0.15)" : (activeBoss.subType === 'dreadnought' ? "rgba(136,0,255,0.15)" : "rgba(0,243,255,0.15)");
                 ctx.fillStyle = bgTheme; ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -817,13 +906,11 @@
 
             drawBackgroundGrid(); drawServer(timeScale);
             
-            // Dreadnought Laser Render
             if (dreadnoughtLaserY !== -1 && activeBoss && activeBoss.subType === 'dreadnought') {
                 ctx.fillStyle = `rgba(136, 0, 255, ${0.1 + dreadnoughtCharge/100})`; ctx.fillRect(0, dreadnoughtLaserY - 20, canvas.width, 40);
                 ctx.strokeStyle = "#8800ff"; ctx.beginPath(); ctx.moveTo(0, dreadnoughtLaserY); ctx.lineTo(canvas.width, dreadnoughtLaserY); ctx.stroke();
                 if (dreadnoughtCharge > 50) {
                     ctx.fillStyle = "#fff"; ctx.fillRect(0, dreadnoughtLaserY - 5, canvas.width, 10);
-                    // Hit buildings
                     for (let i = buildings.length - 1; i >= 0; i--) {
                         if (Math.abs(buildings[i].y - dreadnoughtLaserY) < 30) {
                             createExplosion(buildings[i].x, buildings[i].y, "#8800ff", 30); sndExplode(); buildings.splice(i, 1); updatePlacementUI();
@@ -838,9 +925,13 @@
                 if (targets.length > 0 && autoNodes.length > 0) {
                     let target = targets[Math.floor(Math.random() * targets.length)]; let firingNode = autoNodes[Math.floor(Math.random() * autoNodes.length)];
                     autoLasers.push({sx: firingNode.x, sy: firingNode.y, tx: target.x, ty: target.y, life: 10, color: "#39ff14"}); sndShoot();
-                    target.hp--;
+                    target.hp -= (1 * prestigeMult);
                     if (target.hp <= 0) { 
-                        createExplosion(target.x, target.y, target.color, 25); if(target.type !== 'boss') playerStats.souls += target.maxHp * 15; 
+                        createExplosion(target.x, target.y, target.color, 25); 
+                        if(target.type !== 'boss') { 
+                            playerStats.souls += target.maxHp * 15; 
+                            if(wave > 10) playerStats.zephyrite += Math.ceil(target.maxHp * 2);
+                        }
                         enemies.splice(enemies.indexOf(target), 1); 
                     }
                 }
@@ -849,60 +940,80 @@
             for (let i = buildings.length - 1; i >= 0; i--) {
                 let b = buildings[i];
                 
-                // Draw Encryption lock
                 if (b.encrypted) {
                     ctx.fillStyle = "rgba(0, 243, 255, 0.4)"; ctx.beginPath(); ctx.arc(b.x, b.y, b.size || b.width, 0, Math.PI*2); ctx.fill();
                     ctx.strokeStyle = "#00f3ff"; ctx.strokeRect(b.x - 20, b.y - 20, 40, 40);
                     ctx.fillStyle = "#fff"; ctx.font = "bold 20px 'VT323'"; ctx.textAlign = "center"; ctx.fillText(b.word, b.x, b.y - 30);
                 }
 
-                if (b.type === 'sentry') {
-                    let bColor = b.level === 1 ? "#39ff14" : (b.level === 2 ? "#ff8800" : (b.level === 3 ? "#d900ff" : (b.level === 4 ? "#fff" : "#00f3ff")));
-                    b.size = 14 + ((b.level || 1) * 2);
+                if (b.type === 'sentry' || b.type === 'zephyr_sentry') {
+                    let bColor = b.type === 'sentry' ? 
+                        (b.level === 1 ? "#39ff14" : (b.level === 2 ? "#ff8800" : (b.level === 3 ? "#d900ff" : (b.level === 4 ? "#fff" : "#ff003c")))) : 
+                        "#d900ff"; // Zephyr Sentry base color
+                    
+                    if (b.type === 'sentry') b.size = 14 + (Math.min(4, b.level) * 2);
 
                     if (!b.encrypted) {
-                        ctx.fillStyle = "rgba(57, 255, 20, 0.05)"; ctx.beginPath(); ctx.arc(b.x, b.y, b.territory, 0, Math.PI * 2); ctx.fill();
-                        if (wave > 0) b.hp -= timeScale * 0.015; 
+                        ctx.fillStyle = b.level === 5 ? "rgba(255, 0, 60, 0.05)" : (b.type === 'zephyr_sentry' ? "rgba(217, 0, 255, 0.05)" : "rgba(57, 255, 20, 0.05)"); 
+                        ctx.beginPath(); ctx.arc(b.x, b.y, b.territory, 0, Math.PI * 2); ctx.fill();
+                        
+                        if (wave > 0 && b.type === 'sentry') b.hp -= timeScale * 0.015; 
                         
                         let target = enemies.find(e => !e.shielded && e.type !== 'egg' && Math.hypot(e.x - b.x, e.y - b.y) < b.territory && (e.type !== 'phantom' || e.alpha > 0.5));
                         if (target && empTimer <= 0) b.angle = Math.atan2(target.y - b.y, target.x - b.x);
                         
                         b.cooldown -= timeScale;
-                        let fireRate = b.level === 1 ? 45 : (b.level === 2 ? 25 : (b.level === 3 ? 15 : (b.level === 4 ? 8 : 4)));
-                        let dmg = b.level >= 3 ? 2 : 1;
+                        let fireRate = b.type === 'sentry' ? (b.level === 1 ? 45 : (b.level === 2 ? 25 : (b.level === 3 ? 15 : (b.level === 4 ? 8 : 2)))) : 15;
+                        let dmg = (b.type === 'sentry' ? (b.level >= 3 ? (b.level === 5 ? 3 : 2) : 1) : 4) * prestigeMult;
 
                         if (b.cooldown <= 0 && target && empTimer <= 0) {
-                            let dmgDealt = target.type === 'goliath' ? Math.max(0.5, dmg * 0.5) : dmg; // Goliath takes half damage
+                            let dmgDealt = target.type === 'goliath' ? Math.max(0.5, dmg * 0.5) : dmg;
                             target.hp -= dmgDealt; sndShoot();
                             autoLasers.push({sx: b.x + Math.cos(b.angle) * (b.size*1.2), sy: b.y + Math.sin(b.angle) * (b.size*1.2), tx: target.x, ty: target.y, life: 10, color: bColor});
                             b.cooldown = fireRate; 
                             if (target.hp <= 0) { 
                                 createExplosion(target.x, target.y, target.color, target.type==='boss'?50:20); 
-                                if(target.type === 'boss') { playerStats.souls += 1000; playerStats.faith = 100; addFloatingText(target.x, target.y, "BOSS DEFEATED", "#39ff14"); activeBoss = null; bossOverlay.style.opacity = '0'; } 
-                                else { playerStats.souls += target.maxHp * 15; }
+                                if(target.type === 'boss') { 
+                                    playerStats.souls += 1000; playerStats.faith = 100; 
+                                    if(wave > 10) playerStats.zephyrite += 200;
+                                    addFloatingText(target.x, target.y, "BOSS DEFEATED", "#39ff14"); activeBoss = null; bossOverlay.style.opacity = '0'; 
+                                } else { 
+                                    playerStats.souls += target.maxHp * 15; 
+                                    if(wave > 10) playerStats.zephyrite += Math.ceil(target.maxHp * 2);
+                                }
                                 enemies.splice(enemies.indexOf(target), 1); 
                             }
                         }
                     }
 
-                    ctx.fillStyle = "#050a0f"; ctx.strokeStyle = (empTimer > 0 || b.encrypted) ? "#555" : bColor; ctx.lineWidth = 2;
-                    ctx.beginPath(); ctx.arc(b.x, b.y, b.size, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-                    ctx.fillStyle = (empTimer > 0 || b.encrypted) ? "#555" : bColor; ctx.beginPath(); ctx.arc(b.x, b.y, b.size * 0.4, 0, Math.PI * 2); ctx.fill();
+                    if (b.type === 'sentry') {
+                        ctx.fillStyle = "#050a0f"; ctx.strokeStyle = (empTimer > 0 || b.encrypted) ? "#555" : bColor; ctx.lineWidth = b.level === 5 ? 4 : 2;
+                        ctx.beginPath(); ctx.arc(b.x, b.y, b.size, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+                        ctx.fillStyle = (empTimer > 0 || b.encrypted) ? "#555" : bColor; ctx.beginPath(); ctx.arc(b.x, b.y, b.size * 0.4, 0, Math.PI * 2); ctx.fill();
 
-                    ctx.save(); ctx.translate(b.x, b.y); ctx.rotate(b.angle);
-                    ctx.fillStyle = (empTimer > 0 || b.encrypted) ? "#555" : bColor;
-                    if (b.level >= 4) { ctx.fillRect(b.size * 0.3, -8, b.size, 4); ctx.fillRect(b.size * 0.3, 4, b.size, 4); }
-                    else { ctx.fillRect(b.size * 0.3, -4 - (b.level-1), b.size * 0.9, 8 + (b.level-1)*2); }
-                    ctx.restore();
+                        ctx.save(); ctx.translate(b.x, b.y); ctx.rotate(b.angle);
+                        ctx.fillStyle = (empTimer > 0 || b.encrypted) ? "#555" : bColor;
+                        if (b.level >= 4) { ctx.fillRect(b.size * 0.3, -8, b.size, 4); ctx.fillRect(b.size * 0.3, 4, b.size, 4); }
+                        else { ctx.fillRect(b.size * 0.3, -4 - (b.level-1), b.size * 0.9, 8 + (b.level-1)*2); }
+                        ctx.restore();
+                    } else if (b.type === 'zephyr_sentry') {
+                        // Diamond shape
+                        ctx.fillStyle = "#050a0f"; ctx.strokeStyle = (empTimer > 0 || b.encrypted) ? "#555" : bColor; ctx.lineWidth = 2;
+                        ctx.beginPath(); ctx.moveTo(b.x, b.y - b.size); ctx.lineTo(b.x + b.size, b.y); ctx.lineTo(b.x, b.y + b.size); ctx.lineTo(b.x - b.size, b.y); ctx.closePath(); ctx.fill(); ctx.stroke();
+                        ctx.save(); ctx.translate(b.x, b.y); ctx.rotate(b.angle);
+                        ctx.fillStyle = (empTimer > 0 || b.encrypted) ? "#555" : "#fff";
+                        ctx.beginPath(); ctx.moveTo(0, -5); ctx.lineTo(b.size * 1.5, 0); ctx.lineTo(0, 5); ctx.fill();
+                        ctx.restore();
+                    }
 
-                    ctx.fillStyle = "#ff003c"; ctx.fillRect(b.x - 12, b.y + 22, 24, 4); ctx.fillStyle = "#39ff14"; ctx.fillRect(b.x - 12, b.y + 22, 24 * (Math.max(0, b.hp) / b.maxHp), 4);
+                    ctx.fillStyle = "#ff003c"; ctx.fillRect(b.x - 12, b.y + 22, 24, 4); ctx.fillStyle = bColor; ctx.fillRect(b.x - 12, b.y + 22, 24 * (Math.max(0, b.hp) / b.maxHp), 4);
                     if (b.hp <= 0) { createExplosion(b.x, b.y, bColor, 30); buildings.splice(i, 1); updatePlacementUI(); sndExplode(); }
                 } 
                 else if (b.type === 'firewall') {
                     if (!b.encrypted) {
                         ctx.fillStyle = b.isHit ? "rgba(255, 255, 255, 0.6)" : "rgba(255, 136, 0, 0.2)";
                         ctx.fillRect(b.x - b.width/2, b.y - b.height/2, b.width, b.height);
-                        b.isHit = false; // Reset visual hit flag
+                        b.isHit = false; 
 
                         ctx.strokeStyle = "#ff8800"; ctx.lineWidth = 2; ctx.strokeRect(b.x - b.width/2, b.y - b.height/2, b.width, b.height);
                         let lines = Math.floor(b.height / 10); ctx.strokeStyle = "rgba(255, 136, 0, 0.5)"; ctx.lineWidth = 1;
@@ -917,33 +1028,52 @@
                     ctx.fillStyle = "#ff003c"; ctx.fillRect(b.x - 15, b.y + b.height/2 + 5, 30, 4); ctx.fillStyle = "#ff8800"; ctx.fillRect(b.x - 15, b.y + b.height/2 + 5, 30 * (Math.max(0, b.hp) / b.maxHp), 4);
                     if (b.hp <= 0) { createExplosion(b.x, b.y, "#ff8800", 30); buildings.splice(i, 1); updatePlacementUI(); sndExplode(); }
                 }
-                else if (b.type === 'pulse') {
-                    ctx.fillStyle = "#050a0f"; ctx.strokeStyle = (empTimer > 0 || b.encrypted) ? "#555" : "#d900ff"; ctx.lineWidth = 3;
-                    ctx.beginPath(); ctx.arc(b.x, b.y, 18, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+                else if (b.type === 'pulse' || b.type === 'plasma_mortar') {
+                    let col = b.type === 'pulse' ? "#d900ff" : "#00ffcc";
+                    ctx.fillStyle = "#050a0f"; ctx.strokeStyle = (empTimer > 0 || b.encrypted) ? "#555" : col; ctx.lineWidth = 3;
+                    
+                    if (b.type === 'pulse') {
+                        ctx.beginPath(); ctx.arc(b.x, b.y, 18, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+                    } else {
+                        ctx.fillRect(b.x - 15, b.y - 15, 30, 30); ctx.strokeRect(b.x - 15, b.y - 15, 30, 30);
+                    }
                     
                     if (!b.encrypted && empTimer <= 0) {
-                        if (wave > 0) b.hp -= timeScale * 0.01; 
-                        b.charge += timeScale;
-                        ctx.fillStyle = `rgba(217, 0, 255, ${b.charge/100})`; ctx.beginPath(); ctx.arc(b.x, b.y, 12, 0, Math.PI*2); ctx.fill();
+                        if (wave > 0 && b.type === 'pulse') b.hp -= timeScale * 0.01; 
+                        
+                        b.charge = b.charge || 0;
+                        let chargeRate = b.type === 'pulse' ? 1 : 0.8; 
+                        b.charge += timeScale * chargeRate;
+
+                        ctx.fillStyle = b.type === 'pulse' ? `rgba(217, 0, 255, ${b.charge/100})` : `rgba(0, 255, 204, ${b.charge/100})`; 
+                        ctx.beginPath(); ctx.arc(b.x, b.y, 12, 0, Math.PI*2); ctx.fill();
                         
                         if (b.charge >= 100) {
                             let hasTarget = false;
                             for (let e = 0; e < enemies.length; e++) {
-                                if (Math.hypot(enemies[e].x - b.x, enemies[e].y - b.y) < b.radius && !enemies[e].shielded) { hasTarget = true; break; }
+                                if (Math.hypot(enemies[e].x - b.x, enemies[e].y - b.y) < b.territory || b.radius && !enemies[e].shielded) { hasTarget = true; break; }
                             }
                             if (hasTarget) {
                                 b.charge = 0; sndPulse();
-                                // Massive Purple Flash on Pulse Fire
-                                ctx.fillStyle = "rgba(217, 0, 255, 0.4)"; ctx.fillRect(0,0,canvas.width,canvas.height);
+                                let dmgOut = b.type === 'pulse' ? 5 : 20; 
+                                let rad = b.type === 'pulse' ? b.radius : b.territory;
                                 
-                                ctx.strokeStyle = "rgba(217, 0, 255, 0.8)"; ctx.lineWidth = 5; ctx.beginPath(); ctx.arc(b.x, b.y, b.radius, 0, Math.PI*2); ctx.stroke();
+                                ctx.fillStyle = b.type === 'pulse' ? "rgba(217, 0, 255, 0.4)" : "rgba(0, 255, 204, 0.4)"; ctx.fillRect(0,0,canvas.width,canvas.height);
+                                ctx.strokeStyle = b.type === 'pulse' ? "rgba(217, 0, 255, 0.8)" : "rgba(0, 255, 204, 0.8)"; ctx.lineWidth = 5; 
+                                ctx.beginPath(); ctx.arc(b.x, b.y, rad, 0, Math.PI*2); ctx.stroke();
+
                                 for (let e = enemies.length - 1; e >= 0; e--) {
-                                    if (Math.hypot(enemies[e].x - b.x, enemies[e].y - b.y) < b.radius && !enemies[e].shielded) {
-                                        enemies[e].hp -= 5;
+                                    if (Math.hypot(enemies[e].x - b.x, enemies[e].y - b.y) < rad && !enemies[e].shielded) {
+                                        enemies[e].hp -= (dmgOut * prestigeMult);
                                         if(enemies[e].hp <= 0) {
                                             createExplosion(enemies[e].x, enemies[e].y, enemies[e].color, 25);
-                                            if (enemies[e].type === 'boss') { playerStats.souls += 1000; playerStats.faith = 100; activeBoss = null; bossOverlay.style.opacity = '0'; }
-                                            else { playerStats.souls += enemies[e].maxHp * 15; }
+                                            if (enemies[e].type === 'boss') { 
+                                                playerStats.souls += 1000; playerStats.faith = 100; activeBoss = null; bossOverlay.style.opacity = '0'; 
+                                                if (wave > 10) playerStats.zephyrite += 200;
+                                            } else { 
+                                                playerStats.souls += enemies[e].maxHp * 15; 
+                                                if (wave > 10) playerStats.zephyrite += Math.ceil(enemies[e].maxHp * 2);
+                                            }
                                             enemies.splice(e, 1);
                                         } else { createExplosion(enemies[e].x, enemies[e].y, "#fff", 5); }
                                     }
@@ -951,8 +1081,8 @@
                             }
                         }
                     }
-                    ctx.fillStyle = "#ff003c"; ctx.fillRect(b.x - 12, b.y + 22, 24, 4); ctx.fillStyle = "#d900ff"; ctx.fillRect(b.x - 12, b.y + 22, 24 * (Math.max(0, b.hp) / b.maxHp), 4);
-                    if (b.hp <= 0) { createExplosion(b.x, b.y, "#d900ff", 30); buildings.splice(i, 1); updatePlacementUI(); sndExplode(); }
+                    ctx.fillStyle = "#ff003c"; ctx.fillRect(b.x - 12, b.y + 22, 24, 4); ctx.fillStyle = col; ctx.fillRect(b.x - 12, b.y + 22, 24 * (Math.max(0, b.hp) / b.maxHp), 4);
+                    if (b.hp <= 0) { createExplosion(b.x, b.y, col, 30); buildings.splice(i, 1); updatePlacementUI(); sndExplode(); }
                 }
                 else if (b.type === 'mine') {
                     let pulse = (Math.sin(frameCount * 0.1) + 1) / 2;
@@ -968,11 +1098,16 @@
                             if (Math.hypot(enemies[e].x - b.x, enemies[e].y - b.y) < 120) {
                                 if(enemies[e].shielded && enemies[e].type !== 'boss') { createExplosion(enemies[e].x, enemies[e].y, "#ff003c", 10); } 
                                 else {
-                                    enemies[e].hp -= 25; 
+                                    enemies[e].hp -= (25 * prestigeMult); 
                                     if(enemies[e].hp <= 0) {
                                         createExplosion(enemies[e].x, enemies[e].y, enemies[e].color, 25);
-                                        if (enemies[e].type === 'boss') { playerStats.souls += 1000; playerStats.faith = 100; activeBoss = null; bossOverlay.style.opacity = '0'; }
-                                        else { playerStats.souls += enemies[e].maxHp * 15; }
+                                        if (enemies[e].type === 'boss') { 
+                                            playerStats.souls += 1000; playerStats.faith = 100; activeBoss = null; bossOverlay.style.opacity = '0'; 
+                                            if(wave > 10) playerStats.zephyrite += 200;
+                                        } else { 
+                                            playerStats.souls += enemies[e].maxHp * 15; 
+                                            if(wave > 10) playerStats.zephyrite += Math.ceil(enemies[e].maxHp * 2);
+                                        }
                                         enemies.splice(e, 1);
                                     } else { createExplosion(enemies[e].x, enemies[e].y, "#fff", 10); }
                                 }
@@ -984,7 +1119,6 @@
             }
 
             if (wave === 0) {
-                // Tutorial logic gracefully replaces the empty Sector 0 phase
                 ctx.fillStyle = "rgba(0, 0, 0, 0.8)"; ctx.fillRect(0, 0, canvas.width, 60);
                 ctx.fillStyle = "#39ff14"; ctx.font = "bold 24px 'VT323', monospace"; ctx.textAlign = "center";
                 
@@ -1030,7 +1164,7 @@
                     ctx.fillText("WARNING: KERNEL PANIC IMMINENT", canvas.width/2, canvas.height/2); ctx.shadowBlur = 0; 
                     
                     if (bossWarningTimer <= 0) {
-                        let hpScale = 1 + (wave * 0.20); let speedScale = 1 + (wave * 0.04);
+                        let hpScale = 1 + (wave * 0.20) + (prestigeLevel * 2.0); let speedScale = 1 + (wave * 0.04);
                         let bTypes = ['swarm_queen', 'dreadnought', 'cryptolocker'];
                         let sType = bTypes[(Math.floor(wave/5) - 1) % bTypes.length] || bTypes[Math.floor(Math.random()*bTypes.length)];
                         
@@ -1040,13 +1174,12 @@
                         let bColor = sType === 'dreadnought' ? "#8800ff" : (sType === 'swarm_queen' ? "#ff003c" : "#00f3ff");
 
                         let e = { 
-                            x: -80, y: canvas.height/2, type: 'boss', subType: sType, shielded: true, 
+                            x: -80, y: canvas.height/2, type: 'boss', subType: sType, shielded: true, isPhase2: false,
                             speed: bSpeed * speedScale, size: bSize, hp: Math.floor(bHp * hpScale), maxHp: Math.floor(bHp * hpScale), color: bColor,
                             word: bossWords[Math.floor(Math.random() * bossWords.length)]
                         };
                         enemies.push(e); enemiesToSpawn--; activeBoss = e;
                         
-                        // Apply Background overlay
                         bossOverlay.style.opacity = '1';
                         if (sType === 'swarm_queen') bossOverlay.style.background = "radial-gradient(circle, transparent 20%, rgba(255,0,60,0.15) 100%)";
                         if (sType === 'dreadnought') bossOverlay.style.background = "radial-gradient(circle, transparent 20%, rgba(136,0,255,0.15) 100%)";
@@ -1084,33 +1217,30 @@
                 let empDetonated = false;
                 
                 for (let b = 0; b < buildings.length; b++) {
-                    let build = buildings[b];
-                    if (build.type === 'sentry' && Math.hypot(enemy.x - build.x, enemy.y - build.y) < build.territory) { inTerritory = true; }
+                    if ((build.type === 'sentry' || build.type === 'zephyr_sentry') && Math.hypot(enemy.x - build.x, enemy.y - build.y) < build.territory) { inTerritory = true; }
                     
                     if (build.type === 'firewall') {
                         if (enemy.x + enemy.size/2 > build.x - build.width/2 && enemy.x - enemy.size/2 < build.x + build.width/2 &&
                             enemy.y + enemy.size/2 > build.y - build.height/2 && enemy.y - enemy.size/2 < build.y + build.height/2) {
                             
-                            // INJECTED EMP FIX
                             if (enemy.type === 'emp') {
                                 empDetonated = true;
-                                build.hp -= 20; // Causes heavy damage to the hit firewall
+                                build.hp -= 20; 
                                 break;
                             } else {
                                 isBlocked = true; build.hp -= timeScale * 0.15; 
-                                build.isHit = true; // Mark for intersection visual flash
+                                build.isHit = true; 
                             }
                         }
                     }
                 }
                 
-                // Trigger EMP blast
                 if (empDetonated) {
                     createExplosion(enemy.x, enemy.y, enemy.color, 50);
                     empTimer = 180; shakeFrames = 25; sndError();
                     addFloatingText(enemy.x, enemy.y, "EMP DETONATED", "#00ffcc");
                     enemies.splice(i, 1);
-                    continue; // EMP died, proceed to next enemy
+                    continue; 
                 }
                 
                 let moveSpeed = enemy.speed * timeScale;
@@ -1120,30 +1250,42 @@
                 enemy.x += moveSpeed;
                 if (frameCount % 10 === 0 && !enemy.shielded && enemy.type !== 'boss' && enemy.type !== 'goliath') enemy.y += ((Math.random() - 0.5) * 4) * timeScale;
 
-                // Enemy Type Specifics
                 if (enemy.type === 'phantom') {
                     enemy.blink += timeScale; if (enemy.blink > 60) enemy.blink = 0;
                     enemy.alpha = (enemy.blink > 30) ? 0.2 : 1.0;
                 }
                 if (enemy.type === 'egg') {
                     enemy.speed = 0; enemy.eggTimer = (enemy.eggTimer || 0) + timeScale;
-                    if (enemy.eggTimer > 180) { // Hatch after 3 seconds
+                    if (enemy.eggTimer > 180) { 
                         for(let w=0; w<3; w++) enemies.push({ x: enemy.x, y: enemy.y + (Math.random()*40 - 20), type: 'worm', shielded: false, speed: 3.0, size: 12, hp: 1, maxHp: 1, color: "#ff003c" });
                         createExplosion(enemy.x, enemy.y, "#ff003c", 15); enemies.splice(i, 1); continue;
                     }
                 }
 
-                // BOSS ABILITIES
                 if (enemy.type === 'boss') {
+                    // Phase 2 Transition
+                    if (!enemy.shielded && !enemy.isPhase2 && enemy.hp <= enemy.maxHp * 0.5) {
+                        enemy.isPhase2 = true;
+                        enemy.speed *= 1.5;
+                        enemy.color = "#ff003c";
+                        addFloatingText(enemy.x, enemy.y, "CRITICAL: PHASE 2", "#ff003c");
+                        createExplosion(enemy.x, enemy.y, "#ff003c", 40);
+                        sndExplode(); shakeFrames = 15;
+                    }
+
                     if (!enemy.shielded) {
                         let speedScale = 1 + (wave * 0.04);
-                        if (enemy.subType === 'swarm_queen' && frameCount % 120 === 0) {
+                        let queenRate = enemy.isPhase2 ? 60 : 120;
+                        if (enemy.subType === 'swarm_queen' && frameCount % queenRate === 0) {
                             enemies.push({ x: enemy.x + 30, y: enemy.y + (Math.random()*100 - 50), type: 'egg', shielded: false, speed: 0, size: 20, hp: 4, maxHp: 4, color: "#ff003c" });
                         }
                         if (enemy.subType === 'dreadnought' && frameCount % 240 === 0) {
                             dreadnoughtLaserY = Math.random() * (canvas.height - 150) + 75; dreadnoughtCharge = 0; sndPing();
                         }
-                        if (enemy.subType === 'cryptolocker' && frameCount % 180 === 0) {
+                        if (enemy.subType === 'dreadnought' && enemy.isPhase2) dreadnoughtCharge += timeScale; // Charges twice as fast
+                        
+                        let cryptoRate = enemy.isPhase2 ? 90 : 180;
+                        if (enemy.subType === 'cryptolocker' && frameCount % cryptoRate === 0) {
                             let unencryptedBuilds = buildings.filter(b => !b.encrypted);
                             if (unencryptedBuilds.length > 0) {
                                 let targetB = unencryptedBuilds[Math.floor(Math.random() * unencryptedBuilds.length)];
@@ -1152,7 +1294,6 @@
                             }
                         }
                     } else {
-                        // Phase 1 weak spawns
                         if (frameCount % 120 === 0) { enemies.push({ x: enemy.x + 50, y: enemy.y + (Math.random()*80 - 40), type: 'bug', shielded: false, speed: 1.0, size: 20, hp: 2, maxHp: 2, color: "#d900ff" }); }
                     }
                 }
@@ -1161,9 +1302,9 @@
 
                 if (enemy.x > fortressFrontLine) { 
                     if (iFrames <= 0) {
-                        let damage = enemy.type === 'boss' ? 50 : Math.min(25, enemy.maxHp * 5); // Capped damage so ship survives
+                        let damage = enemy.type === 'boss' ? 50 : Math.min(25, enemy.maxHp * 5); 
                         playerStats.faith -= damage;
-                        iFrames = 90; // Apply 1.5 Seconds of Invincibility Frames
+                        iFrames = 90; 
                         shakeFrames = 15; damageFlash = 0.8; sndExplode();
                     } else {
                         addFloatingText(enemy.x, enemy.y, "BLOCKED", "#00f3ff");
@@ -1205,7 +1346,14 @@
             if (currentMana < playerStats.maxMana) { currentMana += playerStats.manaRegen; if (currentMana > playerStats.maxMana) currentMana = playerStats.maxMana; }
             
             document.getElementById('ui-faith').textContent = `SYS.HEALTH: ${Math.floor(playerStats.faith)}%`;
-            document.getElementById('ui-score').textContent = `BYTES: ${playerStats.souls}`;
+            
+            // UI shows both normal Bytes and Zephyrite (if unlocked)
+            if (zephyrUnlocked) {
+                document.getElementById('ui-score').innerHTML = `BYTES: ${playerStats.souls} | <span style="color:var(--term-zephyr)">ZEPH: ${playerStats.zephyrite}</span>`;
+            } else {
+                document.getElementById('ui-score').textContent = `BYTES: ${playerStats.souls}`;
+            }
+
             document.getElementById('mana-bar').style.width = `${(Math.max(0, currentMana) / playerStats.maxMana) * 100}%`;
             document.getElementById('mana-text').textContent = `ENERGY: ${Math.floor(Math.max(0, currentMana))} / ${playerStats.maxMana}`;
             
