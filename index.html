@@ -273,6 +273,7 @@
         
         const AudioContext = window.AudioContext || window.webkitAudioContext; let audioCtx;
         function initAudio() { if(!audioCtx) audioCtx = new AudioContext(); if(audioCtx.state === 'suspended') audioCtx.resume(); }
+        
         function playTone(freq, type, duration, vol=0.1) {
             if(!audioCtx) return;
             const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
@@ -283,13 +284,16 @@
             osc.start(); osc.stop(audioCtx.currentTime + duration);
         }
         
-        const sndType = () => playTone(Math.random()*200+600, 'square', 0.05, 0.05);
-        const sndShoot = () => playTone(Math.random()*100+300, 'sawtooth', 0.1, 0.05);
-        const sndError = () => { playTone(150, 'sawtooth', 0.3, 0.1); playTone(100, 'square', 0.4, 0.1); };
-        const sndPing = () => { playTone(800, 'sine', 0.1, 0.1); setTimeout(() => playTone(1200, 'sine', 0.2, 0.1), 100); };
-        const sndExplode = () => playTone(100, 'square', 0.4, 0.2);
-        const sndBossHit = () => { playTone(200, 'sawtooth', 0.5, 0.2); playTone(150, 'square', 0.6, 0.2); };
-        const sndPulse = () => playTone(150, 'sine', 0.5, 0.3);
+        // --- AUDIO FIXES ---
+        // Changed harsh 'square' and 'sawtooth' waves to softer 'sine' and 'triangle'.
+        // Lowered volume multipliers significantly so it's pleasant, not jarring!
+        const sndType = () => playTone(Math.random()*200+600, 'sine', 0.05, 0.02);
+        const sndShoot = () => playTone(Math.random()*100+300, 'triangle', 0.1, 0.02);
+        const sndError = () => { playTone(150, 'triangle', 0.2, 0.05); playTone(100, 'sine', 0.3, 0.05); };
+        const sndPing = () => { playTone(800, 'sine', 0.1, 0.03); setTimeout(() => playTone(1200, 'sine', 0.2, 0.03), 100); };
+        const sndExplode = () => playTone(100, 'triangle', 0.3, 0.05); // No longer a massive BAM!
+        const sndBossHit = () => { playTone(200, 'triangle', 0.3, 0.05); };
+        const sndPulse = () => playTone(150, 'sine', 0.4, 0.05);
 
         let playerStats = { maxMana: 100, manaRegen: 0.2, smiteCost: 20, smiteDmg: 1, souls: 0, zephyrite: 0, faith: 100, autoAtk: 0, autoHack: 0, smiteSplash: false };
         let upgradeCosts = { maxMana: 150, regen: 200, dmg: 250, heal: 100, auto: 300, hack: 500, splash: 800 };
@@ -310,7 +314,7 @@
         let pulseUnlocked = false;
         
         let recentWords = []; const memorySize = 4;
-        let currentFinalScore = 0; // For the leaderboard
+        let currentFinalScore = 0; 
 
         const shortWords = ["data", "wire", "core", "byte", "chip", "node", "link", "port", "disk", "ping", "boot", "host", "user", "file", "path", "code", "lock", "key", "scan", "task", "grid", "wave", "sync", "hash", "salt", "cache", "proxy", "admin", "token", "cloud"];
         const longWords = ["network", "system", "memory", "access", "control", "process", "command", "digital", "virtual", "circuit", "gateway", "firewall", "security", "terminal", "hardware", "software", "database", "protocol", "bandwidth", "encrypt", "malware", "monitor", "server", "router", "traffic"];
@@ -338,32 +342,41 @@
         if (highScore > 0) document.getElementById('personal-best').textContent = `BEST SECTOR REACHED: ${highScore}`;
 
         // ==========================================
-        // GLOBAL LEADERBOARD MOCK API
-        // Replace the contents of these functions with Firebase/Supabase fetch calls!
+        // DREAMLO GLOBAL LEADERBOARD API
+        // Paste your codes from dreamlo.com right here!
         // ==========================================
+        const DREAMLO_PUBLIC_CODE = 69e11f208f40bb10681d516e; // <--- PASTE PUBLIC CODE HERE
+        const DREAMLO_PRIVATE_CODE = p_mnuGlM_kiGiA7AnsWj_gmuv1v4x3tkilZ7OQO02giQ; // <--- PASTE PRIVATE CODE HERE
+
         function saveGlobalScore(initials, score) {
-            // REPLACE THIS WITH YOUR DATABASE POST REQUEST
-            // Example: fetch('YOUR_API_URL', { method: 'POST', body: JSON.stringify({name: initials, score: score}) })
-            let localScores = JSON.parse(localStorage.getItem('sysPurgeGlobalMock') || "[]");
-            localScores.push({ name: initials.toUpperCase(), score: score });
-            localScores.sort((a, b) => b.score - a.score);
-            localScores = localScores.slice(0, 10); // Keep top 10
-            localStorage.setItem('sysPurgeGlobalMock', JSON.stringify(localScores));
+            // Send the score to the Dreamlo server
+            let safeInitials = initials.toUpperCase().replace(/[^A-Z0-9]/g, ''); // Keep it safe
+            fetch(`https://www.dreamlo.com/lb/${DREAMLO_PRIVATE_CODE}/add/${safeInitials}/${score}`)
+                .then(response => console.log("Score uploaded globally!"))
+                .catch(err => console.error("Error uploading score:", err));
         }
 
         function fetchGlobalScores(callback) {
-            // REPLACE THIS WITH YOUR DATABASE GET REQUEST
-            // Example: fetch('YOUR_API_URL').then(res => res.json()).then(data => callback(data))
-            setTimeout(() => { // Simulated network delay
-                let localScores = JSON.parse(localStorage.getItem('sysPurgeGlobalMock') || "[]");
-                if (localScores.length === 0) {
-                    // Inject some dummy data if empty
-                    localScores = [
-                        {name: "CPU", score: 25}, {name: "RAM", score: 20}, {name: "GPU", score: 15}
-                    ];
-                }
-                callback(localScores);
-            }, 300);
+            // Fetch top scores from Dreamlo in JSON format
+            fetch(`https://www.dreamlo.com/lb/${DREAMLO_PUBLIC_CODE}/json`)
+                .then(response => response.json())
+                .then(data => {
+                    let list = data.dreamlo.leaderboard.entry;
+                    if (!list) list = []; 
+                    if (!Array.isArray(list)) list = [list]; 
+                    
+                    // Format the data so our game can read it easily
+                    let formattedScores = list.map(item => {
+                        return { name: item.name, score: parseInt(item.score) };
+                    });
+                    
+                    // Only return the top 10 scores
+                    callback(formattedScores.slice(0, 10)); 
+                })
+                .catch(err => {
+                    console.error("Error fetching scores:", err);
+                    callback([{name: "ERR", score: 0}]); // Show error on screen if offline
+                });
         }
 
         function showLeaderboardScreen() {
@@ -373,19 +386,24 @@
             let listDiv = document.getElementById('leaderboard-list');
             listDiv.innerHTML = '<div style="text-align: center; color: #fff; font-size: 2rem;">Fetching data...</div>';
             
+            // Call the fetch function we defined above
             fetchGlobalScores((data) => {
                 listDiv.innerHTML = `
                     <div class="leaderboard-entry" style="border-bottom: 2px solid var(--term-cyan); font-weight: bold; color: var(--term-cyan);">
                         <span>RANK</span><span>USER</span><span>SECTORS</span>
                     </div>
                 `;
-                data.forEach((entry, index) => {
-                    listDiv.innerHTML += `
-                        <div class="leaderboard-entry">
-                            <span>#${index + 1}</span><span>${entry.name}</span><span>${entry.score}</span>
-                        </div>
-                    `;
-                });
+                if (data.length === 0) {
+                    listDiv.innerHTML += `<div style="text-align: center; margin-top: 10px; color: #aaa;">No scores yet!</div>`;
+                } else {
+                    data.forEach((entry, index) => {
+                        listDiv.innerHTML += `
+                            <div class="leaderboard-entry">
+                                <span>#${index + 1}</span><span>${entry.name}</span><span>${entry.score}</span>
+                            </div>
+                        `;
+                    });
+                }
             });
         }
 
@@ -924,9 +942,6 @@
         function createExplosion(x, y, color, amount) { for (let i = 0; i < amount; i++) particles.push({ x, y, vx: (Math.random() - 0.5)*15, vy: (Math.random() - 0.5)*15, life: 1.0, color, size: Math.floor(Math.random()*5+2)}); }
         function addFloatingText(x, y, text, color) { floatingTexts.push({ x, y, text, color, life: 1.0, vy: -1.0 }); }
 
-        // ==========================================
-        // VISUALS: STARS, GLASS, & GRID
-        // ==========================================
         function drawStars(timeScale) {
             ctx.fillStyle = zephyrUnlocked ? "rgba(217, 0, 255, 0.8)" : "rgba(0, 243, 255, 0.8)";
             bgStars.forEach(star => {
@@ -939,19 +954,17 @@
             });
         }
 
-        // NEW: Cockpit/Glass overlay to frame the tactical window
+        // NEW: Cockpit/Glass Overlay logic to separate stars from the grid
         function drawGlassOverlay() {
             ctx.save();
-            // Subtle glass reflection streak
             let grad = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
             grad.addColorStop(0, "rgba(255, 255, 255, 0.0)");
             grad.addColorStop(0.35, "rgba(255, 255, 255, 0.01)");
-            grad.addColorStop(0.4, "rgba(255, 255, 255, 0.06)"); // Streak
+            grad.addColorStop(0.4, "rgba(255, 255, 255, 0.06)"); 
             grad.addColorStop(0.45, "rgba(255, 255, 255, 0.0)");
             ctx.fillStyle = grad;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // Dark vignette (Cockpit frame shadow)
             let vig = ctx.createRadialGradient(canvas.width/2, canvas.height/2, canvas.height*0.35, canvas.width/2, canvas.height/2, canvas.width*0.6);
             vig.addColorStop(0, "rgba(0,0,0,0)");
             vig.addColorStop(1, "rgba(0,0,0,0.85)");
@@ -1122,7 +1135,6 @@
                 finalScoreBox.innerHTML = `SECTORS CLEARED: ${currentFinalScore}<br><span style="font-size:1.5rem; color:#aaa;">BEST: ${highScore}</span>`; 
             }
             
-            // Show Leaderboard entry ONLY if they actually scored > 0
             if (currentFinalScore > 0) {
                 document.getElementById('name-input-box').style.display = 'flex';
             } else {
@@ -1143,9 +1155,7 @@
             ctx.fillStyle = focusMode ? focusBgColor : baseBgColor; 
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // 1. Draw stars (Far background)
             drawStars(timeScale);
-            // 2. Draw Glass (Midground illusion)
             drawGlassOverlay();
             
             if (activeBoss) {
@@ -1159,7 +1169,6 @@
             if (gameState !== 'PLAYING') return;
             frameCount++;
 
-            // 3. Draw Tactical Elements (Foreground)
             drawGrid(); 
             drawServer(timeScale);
             
