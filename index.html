@@ -76,7 +76,19 @@
         }
         .screen.active { opacity: 1; pointer-events: all; }
         
-        .game-title { margin: 0 0 20px 0; color: var(--term-cyan); font-size: 4.5rem; text-transform: uppercase; letter-spacing: 2px; text-shadow: 4px 4px 0px #000, -2px -2px 0px var(--term-red); }
+        /* NEW: Added glitch animation to title */
+        .game-title { 
+            margin: 0 0 20px 0; color: var(--term-cyan); font-size: 4.5rem; text-transform: uppercase; 
+            letter-spacing: 2px; text-shadow: 4px 4px 0px #000, -2px -2px 0px var(--term-red); 
+            animation: textGlitch 3s infinite; position: relative;
+        }
+
+        @keyframes textGlitch {
+            0%, 100% { transform: translate(0); text-shadow: 4px 4px 0px #000, -2px -2px 0px var(--term-red); }
+            10% { transform: translate(-2px, 1px); text-shadow: -2px 2px 0px var(--term-cyan), 2px -2px 0px var(--term-red); }
+            20% { transform: translate(2px, -1px); text-shadow: 2px -2px 0px var(--term-green), -2px 2px 0px #000; }
+            30% { transform: translate(0); text-shadow: 4px 4px 0px #000, -2px -2px 0px var(--term-red); }
+        }
 
         #story-text { color: var(--term-red); font-size: 2rem; text-align: center; margin-bottom: 20px; max-width: 80%; text-shadow: 2px 2px 0px #000, 0 0 10px var(--term-red); }
         .currency-display { font-size: 2.5rem; color: var(--term-cyan); margin-bottom: 20px; text-shadow: 0 0 8px var(--term-cyan); }
@@ -91,6 +103,15 @@
         button:hover:not(:disabled) { transform: translate(2px, 2px); box-shadow: 2px 2px 0px #000; background: #fff;}
         button:disabled { background: #222; color: #555; box-shadow: none; cursor: not-allowed; }
 
+        /* NEW: Pulse animation for the start button */
+        .pulse-btn {
+            animation: pulseFade 1.2s infinite alternate; border: 2px solid #fff;
+        }
+        @keyframes pulseFade {
+            from { box-shadow: 0 0 10px var(--term-cyan); transform: scale(1); }
+            to { box-shadow: 0 0 25px var(--term-cyan); transform: scale(1.05); }
+        }
+
         .shop-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; width: 90%; margin-bottom: 20px; }
         .upgrade-card { background: rgba(5, 10, 15, 0.8); border: 1px solid #334; padding: 10px; text-align: center; transition: border-color 0.2s; position: relative;}
         .upgrade-card:hover { border-color: var(--term-cyan); }
@@ -100,6 +121,10 @@
         .new-tag { position: absolute; top: -10px; right: -10px; background: var(--term-red); color: #fff; padding: 2px 6px; font-size: 1rem; box-shadow: 2px 2px 0 #000; animation: blink 1s infinite;}
         
         @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+
+        /* NEW: Blinking instructions */
+        .blink-cmd { animation: blinkText 1.5s infinite; font-weight: bold; }
+        @keyframes blinkText { 0%, 100% { opacity: 1; text-shadow: 0 0 10px var(--term-cyan); } 50% { opacity: 0.4; text-shadow: none; } }
 
         .tier-2, .tier-3, .tier-4, .tier-5, .tier-6 { display: none; }
 
@@ -132,7 +157,7 @@
         #mana-bar { height: 100%; background: var(--term-cyan); width: 100%; transition: width 0.1s linear; }
         #mana-text { position: absolute; width: 100%; text-align: center; font-size: 1.6rem; line-height: 25px; color: #000; mix-blend-mode: difference; font-weight: bold;}
 
-        #boot-log { text-align: left; width: 80%; font-size: 1.8rem; color: #889; margin-bottom: 30px; line-height: 1.6; }
+        #boot-log { text-align: left; width: 80%; font-size: 1.8rem; color: #889; margin-bottom: 30px; line-height: 1.6; min-height: 150px; }
         .log-sys { color: var(--term-red); text-shadow: 0 0 5px var(--term-red);}
         .log-cmd { color: var(--term-cyan); text-shadow: 0 0 5px var(--term-cyan);}
         
@@ -173,10 +198,10 @@
             <h1 class="game-title">System_Purge.exe</h1>
             <div id="boot-log">
                 > WAITING FOR USER INPUT...<br>
-                > TO INITIATE SEQUENCE, TYPE: <span class="log-cmd">sys.boot</span> IN TERMINAL BELOW.
+                > TO INITIATE SEQUENCE, TYPE: <span class="log-cmd blink-cmd">sys.boot</span> IN TERMINAL BELOW.
             </div>
             <div id="personal-best"></div>
-            <button id="btn-start" onclick="startGame()" style="display: none; background: var(--term-cyan);">[ INITIALIZE ]</button>
+            <button id="btn-start" class="pulse-btn" onclick="startGame()" style="display: none; background: var(--term-cyan);">[ INITIALIZE ]</button>
         </div>
 
         <div id="shop-screen" class="screen">
@@ -386,10 +411,20 @@
                 if (cmd === '') return;
 
                 if (gameState === 'START') {
+                    // NEW: Stepped boot animation sequence
                     if (cmd === 'sys.boot') {
-                        document.getElementById('boot-log').innerHTML += `<br><br><span class="log-cmd">C:\\> sys.boot</span><br><span class="log-sys">[SYS]: CORE AWAKENED...</span><br>> RUNNING CALIBRATION SEQUENCE...`;
+                        let bootLog = document.getElementById('boot-log');
+                        bootLog.innerHTML += `<br><br><span class="log-cmd">C:\\> sys.boot</span>`;
                         sndPing();
-                        setTimeout(() => document.getElementById('btn-start').style.display = 'inline-block', 1200);
+                        
+                        setTimeout(() => { bootLog.innerHTML += `<br><span class="log-sys">[SYS]: CORE AWAKENED...</span>`; sndType(); }, 400);
+                        setTimeout(() => { bootLog.innerHTML += `<br>> MOUNTING VIRTUAL DRIVES... [OK]`; sndType(); }, 800);
+                        setTimeout(() => { bootLog.innerHTML += `<br>> LOADING SECTOR DATA... [||||||||||] 100%`; sndType(); }, 1200);
+                        setTimeout(() => { 
+                            let btn = document.getElementById('btn-start');
+                            btn.style.display = 'inline-block'; 
+                            sndPing(); 
+                        }, 1800);
                     } else { document.getElementById('boot-log').innerHTML += `<br>> ERROR: COMMAND NOT RECOGNIZED.`; sndError(); }
                     return;
                 }
@@ -529,16 +564,21 @@
             document.getElementById('btn-up-splash').disabled = false; document.getElementById('btn-up-splash').textContent = "INSTALL";
             
             document.getElementById('game-over-screen').classList.remove('active'); gameState = 'START';
-            document.getElementById('boot-log').innerHTML = `> WAITING FOR USER INPUT...<br>> TO INITIATE SEQUENCE, TYPE: <span class="log-cmd">sys.boot</span> IN TERMINAL BELOW.`;
+            document.getElementById('boot-log').innerHTML = `> WAITING FOR USER INPUT...<br>> TO INITIATE SEQUENCE, TYPE: <span class="log-cmd blink-cmd">sys.boot</span> IN TERMINAL BELOW.`;
             document.getElementById('btn-start').style.display = 'none';
             if (highScore > 0) document.getElementById('personal-best').textContent = `BEST SECTOR REACHED: ${highScore}`;
             document.getElementById('start-screen').classList.add('active'); cmdInput.value = ''; cmdInput.focus();
         }
 
+        // NEW: Flash bang animation upon entering the game
         function startGame() {
+            sndExplode();
+            shakeFrames = 20; 
+            damageFlash = 1.0; // Acts as a full white screen flash when starting
+            
             document.getElementById('start-screen').classList.remove('active'); document.getElementById('in-game-ui').style.display = 'flex';
             wave = 0; tutorialStep = 0; tutorialWait = 60; spawnTimer = 0; empTimer = 0; activeBoss = null; bossOverlay.style.opacity = '0'; iFrames = 0;
-            gameState = 'PLAYING'; enemies = []; currentMana = playerStats.maxMana; damageFlash = 0;
+            gameState = 'PLAYING'; enemies = []; currentMana = playerStats.maxMana; 
             document.getElementById('ui-wave').textContent = `SECTOR: 0`; updatePlacementUI(); cmdInput.focus();
         }
 
@@ -770,7 +810,7 @@
             
             let shieldOpacity = Math.max(0.1, playerStats.faith / 200);
             ctx.fillStyle = `rgba(0, 243, 255, ${shieldOpacity})`;
-            if (damageFlash > 0) ctx.fillStyle = `rgba(255, 0, 60, ${damageFlash})`;
+            if (damageFlash > 0) ctx.fillStyle = `rgba(255, 255, 255, ${damageFlash})`; // Change flash color to white for the startup effect
             ctx.fillRect(baseX - 15, 30, 8, canvas.height - 60);
 
             if (iFrames > 0 && frameCount % 10 < 5) {
@@ -1340,7 +1380,7 @@
             }
             ctx.globalAlpha = 1.0; 
             
-            if (damageFlash > 0) { ctx.fillStyle = `rgba(255, 0, 60, ${damageFlash * 0.4})`; ctx.fillRect(0, 0, canvas.width, canvas.height); damageFlash -= 0.05; }
+            if (damageFlash > 0) { ctx.fillStyle = `rgba(255, 255, 255, ${damageFlash * 0.4})`; ctx.fillRect(0, 0, canvas.width, canvas.height); damageFlash -= 0.05; }
             
             ctx.restore(); 
 
