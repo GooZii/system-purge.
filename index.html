@@ -246,7 +246,7 @@
             <div id="name-input-box">
                 <span style="font-size: 2rem; color: var(--term-cyan);">NEW HIGH SCORE ENTRY</span><br>
                 <input type="text" id="player-initials" maxlength="3" placeholder="AAA" autocomplete="off">
-                <button onclick="submitNewScore()" style="background: var(--term-orange);">[ UPLOAD DATA ]</button>
+                <button id="btn-submit-score" onclick="submitNewScore()" style="background: var(--term-orange);">[ UPLOAD DATA ]</button>
             </div>
 
             <button id="btn-reboot" onclick="resetGame()" style="margin-top: 20px;">[ REBOOT ]</button>
@@ -284,14 +284,11 @@
             osc.start(); osc.stop(audioCtx.currentTime + duration);
         }
         
-        // --- AUDIO FIXES ---
-        // Changed harsh 'square' and 'sawtooth' waves to softer 'sine' and 'triangle'.
-        // Lowered volume multipliers significantly so it's pleasant, not jarring!
         const sndType = () => playTone(Math.random()*200+600, 'sine', 0.05, 0.02);
         const sndShoot = () => playTone(Math.random()*100+300, 'triangle', 0.1, 0.02);
         const sndError = () => { playTone(150, 'triangle', 0.2, 0.05); playTone(100, 'sine', 0.3, 0.05); };
         const sndPing = () => { playTone(800, 'sine', 0.1, 0.03); setTimeout(() => playTone(1200, 'sine', 0.2, 0.03), 100); };
-        const sndExplode = () => playTone(100, 'triangle', 0.3, 0.05); // No longer a massive BAM!
+        const sndExplode = () => playTone(100, 'triangle', 0.3, 0.05); 
         const sndBossHit = () => { playTone(200, 'triangle', 0.3, 0.05); };
         const sndPulse = () => playTone(150, 'sine', 0.4, 0.05);
 
@@ -343,39 +340,44 @@
 
         // ==========================================
         // DREAMLO GLOBAL LEADERBOARD API
-        // Paste your codes from dreamlo.com right here!
+        // Paste your codes from dreamlo.com between these quotes!
         // ==========================================
-        const DREAMLO_PUBLIC_CODE = "69e11f208f40bb10681d516e"; 
-        const DREAMLO_PRIVATE_CODE = "p_mnuGlM_kiGiA7AnsWj_gmuv1v4x3tkilZ7OQO02giQ";
+        const DREAMLO_PUBLIC_CODE = "69e11f208f40bb10681d516e"; // <--- PASTE PUBLIC CODE HERE
+        const DREAMLO_PRIVATE_CODE = "p_mnuGlM_kiGiA7AnsWj_gmuv1v4x3tkilZ7OQO02giQ"; // <--- PASTE PRIVATE CODE HERE
 
         function saveGlobalScore(initials, score) {
-            // Send the score to the Dreamlo server
-            let safeInitials = initials.toUpperCase().replace(/[^A-Z0-9]/g, ''); // Keep it safe
-            fetch(`https://www.dreamlo.com/lb/${DREAMLO_PRIVATE_CODE}/add/${safeInitials}/${score}`)
+            // Strip out weird characters to avoid breaking the URL
+            let safeInitials = initials.toUpperCase().replace(/[^A-Z0-9]/g, ''); 
+            if (safeInitials === "") safeInitials = "ANON";
+            
+            // We RETURN the fetch promise so the game can wait for the upload to finish!
+            return fetch(`https://www.dreamlo.com/lb/${DREAMLO_PRIVATE_CODE}/add/${safeInitials}/${score}`)
                 .then(response => console.log("Score uploaded globally!"))
                 .catch(err => console.error("Error uploading score:", err));
         }
 
         function fetchGlobalScores(callback) {
-            // Fetch top scores from Dreamlo in JSON format
             fetch(`https://www.dreamlo.com/lb/${DREAMLO_PUBLIC_CODE}/json`)
                 .then(response => response.json())
                 .then(data => {
-                    let list = data.dreamlo.leaderboard.entry;
-                    if (!list) list = []; 
-                    if (!Array.isArray(list)) list = [list]; 
+                    // IMPORTANT FIX: Safety check for an empty database
+                    if (!data || !data.dreamlo || !data.dreamlo.leaderboard || !data.dreamlo.leaderboard.entry) {
+                        callback([]); // Return empty list without crashing!
+                        return;
+                    }
                     
-                    // Format the data so our game can read it easily
+                    let list = data.dreamlo.leaderboard.entry;
+                    if (!Array.isArray(list)) list = [list]; // If only 1 entry, convert to array
+                    
                     let formattedScores = list.map(item => {
                         return { name: item.name, score: parseInt(item.score) };
                     });
                     
-                    // Only return the top 10 scores
-                    callback(formattedScores.slice(0, 10)); 
+                    callback(formattedScores.slice(0, 10)); // Top 10 only
                 })
                 .catch(err => {
                     console.error("Error fetching scores:", err);
-                    callback([{name: "ERR", score: 0}]); // Show error on screen if offline
+                    callback([{name: "ERR", score: 0}]); // Only show ERR if there is a true network error
                 });
         }
 
@@ -386,7 +388,6 @@
             let listDiv = document.getElementById('leaderboard-list');
             listDiv.innerHTML = '<div style="text-align: center; color: #fff; font-size: 2rem;">Fetching data...</div>';
             
-            // Call the fetch function we defined above
             fetchGlobalScores((data) => {
                 listDiv.innerHTML = `
                     <div class="leaderboard-entry" style="border-bottom: 2px solid var(--term-cyan); font-weight: bold; color: var(--term-cyan);">
@@ -394,7 +395,7 @@
                     </div>
                 `;
                 if (data.length === 0) {
-                    listDiv.innerHTML += `<div style="text-align: center; margin-top: 10px; color: #aaa;">No scores yet!</div>`;
+                    listDiv.innerHTML += `<div style="text-align: center; margin-top: 20px; color: #aaa;">NO ENTRIES FOUND. BE THE FIRST!</div>`;
                 } else {
                     data.forEach((entry, index) => {
                         listDiv.innerHTML += `
@@ -413,11 +414,25 @@
         }
 
         function submitNewScore() {
+            let btn = document.getElementById('btn-submit-score');
+            btn.textContent = "[ UPLOADING... ]";
+            btn.disabled = true;
+            btn.style.background = "#555";
+
             let initials = document.getElementById('player-initials').value.trim();
             if (initials.length === 0) initials = "ANON";
-            saveGlobalScore(initials, currentFinalScore);
-            document.getElementById('name-input-box').style.display = 'none';
-            showLeaderboardScreen();
+            
+            // Wait for the upload to complete before changing screens!
+            saveGlobalScore(initials, currentFinalScore).then(() => {
+                document.getElementById('name-input-box').style.display = 'none';
+                
+                // Reset button for next time
+                btn.textContent = "[ UPLOAD DATA ]";
+                btn.disabled = false;
+                btn.style.background = "var(--term-orange)";
+                
+                showLeaderboardScreen();
+            });
         }
         // ==========================================
 
@@ -954,7 +969,6 @@
             });
         }
 
-        // NEW: Cockpit/Glass Overlay logic to separate stars from the grid
         function drawGlassOverlay() {
             ctx.save();
             let grad = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
