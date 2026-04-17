@@ -210,7 +210,7 @@
             <div id="custom-dict-container" style="margin-top: 10px; margin-bottom: 10px; text-align: center;">
                 <button id="btn-toggle-dict" onclick="toggleCustomDict()" style="background: #112; color: var(--term-cyan); font-size: 1.2rem; padding: 5px 15px;">[ ENABLE CUSTOM DICTIONARY ]</button>
                 <div id="custom-dict-ui" style="display: none; margin-top: 10px; flex-direction: column; align-items: center;">
-                    <textarea id="custom-dict-input" placeholder="Type your custom words here, separated by spaces or commas..." style="width: 400px; height: 80px; background: rgba(0, 2, 5, 0.9); color: var(--term-green); border: 2px solid var(--term-cyan); font-family: 'VT323', monospace; font-size: 1.5rem; padding: 10px; outline: none; resize: none;"></textarea>
+                    <textarea id="custom-dict-input" placeholder="Type your custom words here, separated by spaces or commas..." style="width: 400px; height: 60px; background: rgba(0, 2, 5, 0.9); color: var(--term-green); border: 2px solid var(--term-cyan); font-family: 'VT323', monospace; font-size: 1.5rem; padding: 10px; outline: none; resize: none;"></textarea>
                 </div>
             </div>
 
@@ -474,7 +474,13 @@
         }
         // ==========================================
 
-        document.querySelector('.game-wrapper').addEventListener('click', () => { initAudio(); cmdInput.focus(); });
+        document.querySelector('.game-wrapper').addEventListener('click', (e) => { 
+            initAudio(); 
+            // Fixes Bug 1: Only focus terminal if we are not clicking the custom text box or an input
+            if (e.target.tagName !== 'TEXTAREA' && e.target.tagName !== 'INPUT') {
+                cmdInput.focus(); 
+            }
+        });
 
         let focusMode = false;
         cmdInput.addEventListener('input', () => {
@@ -575,6 +581,9 @@
 
                 if (gameState === 'START') {
                     if (cmd === 'sys.boot') {
+                        // Fixes Bug 2: Hide the dictionary UI entirely so it stops overlapping the boot log
+                        document.getElementById('custom-dict-container').style.display = 'none';
+                        
                         let bootLog = document.getElementById('boot-log');
                         bootLog.innerHTML += `<br><br><span class="log-cmd">C:\\> sys.boot</span>`;
                         sndPing();
@@ -729,6 +738,9 @@
             
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
             gameState = 'START';
+
+            // Reset UI specifically to show dict setup again
+            document.getElementById('custom-dict-container').style.display = 'block';
             document.getElementById('boot-log').innerHTML = `> WAITING FOR USER INPUT...<br>> TO INITIATE SEQUENCE, TYPE: <span class="log-cmd blink-cmd">sys.boot</span> IN TERMINAL BELOW.`;
             document.getElementById('btn-start').style.display = 'none';
             if (highScore > 0) document.getElementById('personal-best').textContent = `BEST SECTOR REACHED: ${highScore}`;
