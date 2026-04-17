@@ -186,6 +186,7 @@
         <div class="ui-overlay" id="in-game-ui" style="display: none;">
             <div class="ui-top-row">
                 <div id="ui-faith" style="color: var(--term-green); font-size: 2.2rem; font-weight: bold;">SYS.HEALTH: 100%</div>
+                <div id="ui-anomaly" style="color: var(--term-cyan); font-size: 1.8rem; font-weight: bold; margin-top: 5px; text-shadow: 0 0 5px var(--term-cyan);">ANOMALY: NONE</div>
                 <div id="ui-combo" style="color: var(--term-orange); font-size: 2.2rem; font-weight: bold; opacity: 0.5; transition: all 0.2s;">COMBO: 0</div>
                 <div id="ui-wave" style="color: #fff; opacity: 0.5;">SECTOR: 1</div>
                 <div id="ui-score" style="color: var(--term-cyan); font-size: 2.2rem;">BYTES: 0</div>
@@ -263,7 +264,10 @@
                 <button id="btn-submit-score" onclick="submitNewScore()" style="background: var(--term-orange);">[ UPLOAD DATA ]</button>
             </div>
 
-            <button id="btn-reboot" onclick="resetGame()" style="margin-top: 20px;">[ REBOOT ]</button>
+            <div>
+                <button id="btn-reboot" onclick="resetGame()" style="margin-top: 20px;">[ REBOOT ]</button>
+                <button id="btn-share" onclick="shareRun()" style="margin-top: 20px; background: var(--term-cyan); color: #000;">[ SHARE RESULTS ]</button>
+            </div>
         </div>
     </div>
     
@@ -280,13 +284,20 @@
             }
         }
 
-        const canvas = document.getElementById('gameCanvas'); const ctx = canvas.getContext('2d');
-        const cmdInput = document.getElementById('cmd-input'); const gameContainer = document.getElementById('game-container');
-        const terminalBox = document.getElementById('terminal-box'); const bossOverlay = document.getElementById('boss-overlay');
+        const canvas = document.getElementById('gameCanvas'); 
+        const ctx = canvas.getContext('2d');
+        const cmdInput = document.getElementById('cmd-input'); 
+        const gameContainer = document.getElementById('game-container');
+        const terminalBox = document.getElementById('terminal-box'); 
+        const bossOverlay = document.getElementById('boss-overlay');
         const tooltipBox = document.getElementById('building-tooltip');
         
-        const AudioContext = window.AudioContext || window.webkitAudioContext; let audioCtx;
-        function initAudio() { if(!audioCtx) audioCtx = new AudioContext(); if(audioCtx.state === 'suspended') audioCtx.resume(); }
+        const AudioContext = window.AudioContext || window.webkitAudioContext; 
+        let audioCtx;
+        function initAudio() { 
+            if(!audioCtx) audioCtx = new AudioContext(); 
+            if(audioCtx.state === 'suspended') audioCtx.resume(); 
+        }
         
         function playTone(freq, type, duration, vol=0.1) {
             if(!audioCtx) return;
@@ -309,11 +320,13 @@
         let playerStats = { maxMana: 100, manaRegen: 0.2, smiteCost: 20, smiteDmg: 1, souls: 0, zephyrite: 0, faith: 100, autoAtk: 0, autoHack: 0, smiteSplash: false };
         let upgradeCosts = { maxMana: 150, regen: 200, dmg: 250, heal: 100, auto: 300, hack: 500, splash: 800 };
         
-        let prestigeMult = 1.0; let prestigeLevel = 0; 
+        let prestigeMult = 1.0; 
+        let prestigeLevel = 0; 
         let zephyrUnlocked = false;
         let hasTransitionedToZephyr = false; 
 
-        let gameState = 'START'; let currentMana = playerStats.maxMana;
+        let gameState = 'START'; 
+        let currentMana = playerStats.maxMana;
         let wave = 0, enemiesToSpawn = 0, spawnTimer = 0, shakeFrames = 0, frameCount = 0;
         let enemies = [], scorchMarks = [], lightnings = [], autoLasers = [], particles = [], floatingTexts = [];
         let bgStars = []; 
@@ -331,6 +344,16 @@
         let targetLock = null;
         let lockString = "";
         let combo = 0;
+        let letterProjectiles = [];
+
+        // Anomaly System
+        let currentAnomaly = { name: "NONE", desc: "SYSTEM STABLE", color: "var(--term-cyan)" };
+        const ALL_ANOMALIES = [
+            { name: "OVERCLOCK", desc: "ENEMIES MOVE 50% FASTER", color: "#ff003c" },
+            { name: "DATA_LEAK", desc: "MANA REGEN HALVED", color: "#ff8800" },
+            { name: "CRITICAL_MASS", desc: "ENEMIES HAVE 2X HP", color: "#ff003c" },
+            { name: "LUCKY_STRIKE", desc: "MANUAL SMITE DEALS 3X DAMAGE", color: "#39ff14" }
+        ];
 
         // ==========================================
         // DYNAMIC DICTIONARIES (SCALING DIFFICULTY)
@@ -381,6 +404,22 @@
 
         let highScore = localStorage.getItem('sysPurgeHighScore') || 0;
         if (highScore > 0) document.getElementById('personal-best').textContent = `BEST SECTOR REACHED: ${highScore}`;
+
+        // ==========================================
+        // SHARE RESULTS FEATURE
+        // ==========================================
+        function shareRun() {
+            let anomalyText = currentAnomaly.name !== "NONE" ? ` | 🎲 ${currentAnomaly.name}` : "";
+            let text = `System_Purge.exe [v4.0]\nSector Reached: ${currentFinalScore}${anomalyText}\nScore: ${playerStats.souls} BYTES\n\nCan you beat my system record? 💾🔥⚡️`;
+            
+            navigator.clipboard.writeText(text).then(() => {
+                let btn = document.getElementById('btn-share');
+                btn.textContent = "[ COPIED TO CLIPBOARD! ]";
+                setTimeout(() => btn.textContent = "[ SHARE RESULTS ]", 2000);
+            }).catch(err => {
+                alert("Failed to copy to clipboard. Here is your text:\n\n" + text);
+            });
+        }
 
         // ==========================================
         // DREAMLO GLOBAL LEADERBOARD API 
@@ -503,6 +542,7 @@
                     targetLock = found; lockString = key; combo++; sndType();
                     focusMode = true; 
                     if (gameState === 'PLAYING') { gameContainer.classList.add('focus-mode'); placementMode = null; updatePlacementUI(); }
+                    shootLetterProjectile(key, targetLock);
                 } else {
                     combo = 0; sndError();
                     if (gameState === 'PLAYING') { shakeFrames = 3; document.getElementById('cmd-input').style.background = "rgba(255,0,60,0.3)"; setTimeout(() => document.getElementById('cmd-input').style.background = "transparent", 150); }
@@ -511,6 +551,8 @@
                 let expectedKey = targetLock.word.charAt(lockString.length);
                 if (key === expectedKey) {
                     lockString += key; combo++; sndType();
+                    shootLetterProjectile(key, targetLock);
+                    
                     if (lockString === targetLock.word) {
                         executeLock(targetLock);
                         targetLock = null; lockString = ""; focusMode = false; gameContainer.classList.remove('focus-mode');
@@ -524,6 +566,28 @@
             // Force the physical input to only show successfully typed locked chars
             cmdInput.value = lockString;
         });
+
+        function shootLetterProjectile(key, target) {
+            if (gameState !== 'PLAYING') return; // Don't animate on the start screen
+            
+            let startX = canvas.width / 2;
+            let startY = canvas.height - 60; // Bottom center
+            
+            let tx = canvas.width / 2;
+            let ty = canvas.height / 2;
+            
+            if (target.type === 'enemy') { tx = target.ref.x; ty = target.ref.y; }
+            else if (target.type === 'building') { tx = target.ref.x; ty = target.ref.y; }
+            
+            letterProjectiles.push({
+                char: key.toUpperCase(),
+                x: startX,
+                y: startY,
+                tx: tx,
+                ty: ty,
+                speed: 35 // Very fast laser speed
+            });
+        }
 
         function executeLock(target) {
             if (target.type === 'boot') {
@@ -659,7 +723,7 @@
             upgradeCosts = { maxMana: 150, regen: 200, dmg: 250, heal: 100, auto: 300, hack: 500, splash: 800 };
             currentMana = playerStats.maxMana; wave = 0; damageFlash = 0; autoNodes = []; buildings = []; bossWarningTimer = 0; spawnTimer = 0;
             recentWords = []; empTimer = 0; placementMode = null; pulseUnlocked = false; zephyrUnlocked = false; activeBoss = null; iFrames = 0;
-            hasTransitionedToZephyr = false; combo = 0; targetLock = null; lockString = ""; cmdInput.value = "";
+            hasTransitionedToZephyr = false; combo = 0; targetLock = null; lockString = ""; cmdInput.value = ""; letterProjectiles = [];
             
             document.getElementById('hk-4').style.display = 'none'; 
             document.getElementById('hk-5').style.display = 'none'; 
@@ -694,7 +758,7 @@
             upgradeCosts = { maxMana: 150, regen: 200, dmg: 250, heal: 100, auto: 300, hack: 500, splash: 800 };
             currentMana = playerStats.maxMana; wave = 0; tutorialStep = 0; tutorialWait = 60; damageFlash = 0; autoNodes = []; buildings = []; bossWarningTimer = 0; spawnTimer = 0;
             recentWords = []; empTimer = 0; placementMode = null; pulseUnlocked = false; zephyrUnlocked = false; activeBoss = null; iFrames = 0;
-            hasTransitionedToZephyr = false; combo = 0; targetLock = null; lockString = ""; cmdInput.value = "";
+            hasTransitionedToZephyr = false; combo = 0; targetLock = null; lockString = ""; cmdInput.value = ""; letterProjectiles = [];
             
             document.getElementById('hk-4').style.display = 'none'; 
             document.getElementById('hk-5').style.display = 'none'; 
@@ -747,14 +811,14 @@
             document.getElementById('start-screen').classList.remove('active'); document.getElementById('in-game-ui').style.display = 'flex';
             document.getElementById('active-commands-ui').style.display = 'block';
             wave = 0; tutorialStep = 0; tutorialWait = 60; spawnTimer = 0; empTimer = 0; activeBoss = null; bossOverlay.style.opacity = '0'; iFrames = 0;
-            gameState = 'PLAYING'; enemies = []; currentMana = playerStats.maxMana; combo = 0; targetLock = null; lockString = ""; cmdInput.value = "";
+            gameState = 'PLAYING'; enemies = []; currentMana = playerStats.maxMana; combo = 0; targetLock = null; lockString = ""; cmdInput.value = ""; letterProjectiles = [];
             document.getElementById('ui-wave').textContent = `SECTOR: 0`; updatePlacementUI(); cmdInput.focus();
         }
 
         function startNextWave() {
             document.getElementById('shop-screen').classList.remove('active');
             gameState = 'PLAYING'; wave++; spawnTimer = 0; empTimer = 0; activeBoss = null; bossOverlay.style.opacity = '0'; dreadnoughtLaserY = -1; iFrames = 0;
-            enemies = []; scorchMarks = []; particles = []; floatingTexts = []; autoLasers = [];
+            enemies = []; scorchMarks = []; particles = []; floatingTexts = []; autoLasers = []; letterProjectiles = [];
             combo = 0; targetLock = null; lockString = ""; cmdInput.value = "";
             document.getElementById('active-commands-ui').style.display = 'block';
             
@@ -776,6 +840,15 @@
                     bgStars.forEach(star => star.speed *= 10);
                     setTimeout(() => { bgStars.forEach(star => star.speed /= 10); }, 1500);
                 }
+            }
+
+            // Anomaly System Logic
+            if (wave > 2 && wave % 3 === 0) {
+                currentAnomaly = ALL_ANOMALIES[Math.floor(Math.random() * ALL_ANOMALIES.length)];
+                document.getElementById('ui-anomaly').innerHTML = `ANOMALY DETECTED: <span style="color:${currentAnomaly.color}">${currentAnomaly.name}</span>`;
+            } else {
+                currentAnomaly = { name: "NONE", desc: "SYSTEM STABLE", color: "var(--term-cyan)" };
+                document.getElementById('ui-anomaly').innerHTML = `ANOMALY: <span style="color:${currentAnomaly.color}">${currentAnomaly.name}</span>`;
             }
 
             if (wave > 0 && wave % 5 === 0) {
@@ -892,6 +965,9 @@
             let e = { x: -40, y: yPos, type: type, shielded: false, alpha: 1.0 };
             let hpScale = 1 + (wave * 0.20) + (prestigeLevel * 1.5); 
             let speedScale = 1 + (wave * 0.04);
+            
+            // Anomaly modifier
+            if (currentAnomaly.name === "OVERCLOCK") speedScale *= 1.5;
 
             let cWorm = zephyrUnlocked ? "#ff00ff" : "#ff003c";
             let cTrojan = zephyrUnlocked ? "#ffff00" : "#ff8800";
@@ -901,9 +977,9 @@
             let cBug = zephyrUnlocked ? "#00ffff" : "#d900ff";
 
             if (type === 'worm') {
-                e.speed = (Math.random() * 1.5 + 2.0) * speedScale; e.size = 12; e.hp = 1; e.maxHp = 1; e.color = cWorm; 
+                e.speed = (Math.random() * 1.5 + 2.0) * speedScale; e.size = 12; e.maxHp = 1; e.color = cWorm; 
             } else if (type === 'trojan') {
-                e.speed = 0.4 * speedScale; e.size = 28; e.maxHp = Math.floor(6 * hpScale); e.hp = e.maxHp; e.color = cTrojan; e.shielded = true; 
+                e.speed = 0.4 * speedScale; e.size = 28; e.maxHp = Math.floor(6 * hpScale); e.color = cTrojan; e.shielded = true; 
                 
                 let dict = [];
                 if (useCustomWords && customWordsList.length > 0) {
@@ -922,20 +998,25 @@
                 while(['repair', 'overclock', 'purge'].includes(e.word)) { e.word = dict[Math.floor(Math.random() * dict.length)]; }
                 
             } else if (type === 'brute') {
-                e.speed = 0.25 * speedScale; e.size = 36; e.maxHp = Math.floor(20 * hpScale); e.hp = e.maxHp; e.color = cBrute; e.shielded = false; 
+                e.speed = 0.25 * speedScale; e.size = 36; e.maxHp = Math.floor(20 * hpScale); e.color = cBrute; e.shielded = false; 
             } else if (type === 'emp') { 
-                e.speed = 0.6 * speedScale; e.size = 25; e.maxHp = Math.floor(8 * hpScale); e.hp = e.maxHp; e.color = cEmp; e.shielded = true; e.word = "emp";
+                e.speed = 0.6 * speedScale; e.size = 25; e.maxHp = Math.floor(8 * hpScale); e.color = cEmp; e.shielded = true; e.word = "emp";
             } else if (type === 'cipher') {
-                e.speed = 0.18 * speedScale; e.size = 35; e.maxHp = Math.floor(10 * hpScale); e.hp = e.maxHp; e.color = cCipher; e.shielded = true; 
+                e.speed = 0.18 * speedScale; e.size = 35; e.maxHp = Math.floor(10 * hpScale); e.color = cCipher; e.shielded = true; 
                 let hexLengthMultiplier = wave > 15 ? 4294967295 : 65535;
                 e.word = '0x' + Math.floor(Math.random() * hexLengthMultiplier).toString(16).toLowerCase();
             } else if (type === 'phantom') {
-                e.speed = 0.8 * speedScale; e.size = 24; e.maxHp = Math.floor(5 * hpScale); e.hp = e.maxHp; e.color = "#fff"; e.shielded = false; e.blink = 0;
+                e.speed = 0.8 * speedScale; e.size = 24; e.maxHp = Math.floor(5 * hpScale); e.color = "#fff"; e.shielded = false; e.blink = 0;
             } else if (type === 'goliath') {
-                e.speed = 0.15 * speedScale; e.size = 45; e.maxHp = Math.floor(50 * hpScale); e.hp = e.maxHp; e.color = "#550000"; e.shielded = false;
+                e.speed = 0.15 * speedScale; e.size = 45; e.maxHp = Math.floor(50 * hpScale); e.color = "#550000"; e.shielded = false;
             } else {
-                e.speed = (Math.random() * 1.0 + 0.8) * speedScale; e.size = 20; e.maxHp = Math.floor(2 * hpScale); e.hp = e.maxHp; e.color = cBug; 
+                e.speed = (Math.random() * 1.0 + 0.8) * speedScale; e.size = 20; e.maxHp = Math.floor(2 * hpScale); e.color = cBug; 
             }
+            
+            // Apply CRITICAL_MASS Anomaly
+            if (currentAnomaly.name === "CRITICAL_MASS") e.maxHp *= 2;
+            e.hp = e.maxHp;
+
             enemies.push(e); enemiesToSpawn--; 
         }
 
@@ -997,8 +1078,14 @@
                 document.getElementById('mana-bar').style.background = "#ff003c"; sndError(); setTimeout(() => document.getElementById('mana-bar').style.background = "var(--term-cyan)", 150); return;
             }
 
-            currentMana -= playerStats.smiteCost; let pwr = playerStats.smiteDmg; shakeFrames = 3 + (pwr * 2); 
-            lightnings.push({ x: clickX, y: clickY, life: 10 + (pwr*5), thickness: pwr }); scorchMarks.push({ x: clickX, y: clickY, life: 60 + (pwr*20), size: pwr });
+            // Anomaly LUCKY_STRIKE modifier
+            let pwr = playerStats.smiteDmg; 
+            if (currentAnomaly.name === "LUCKY_STRIKE") pwr *= 3;
+
+            currentMana -= playerStats.smiteCost; 
+            shakeFrames = 3 + (pwr * 2); 
+            lightnings.push({ x: clickX, y: clickY, life: 10 + (pwr*5), thickness: pwr }); 
+            scorchMarks.push({ x: clickX, y: clickY, life: 60 + (pwr*20), size: pwr });
             createExplosion(clickX, clickY, "#00f3ff", 10 + (pwr*5)); sndExplode();
             
             let smiteRadius = playerStats.smiteSplash ? 100 : (60 + (pwr*5));
@@ -1009,7 +1096,7 @@
                     if (enemy.shielded) { addFloatingText(enemy.x, enemy.y, "ENCRYPTED", "#ff003c"); createExplosion(enemy.x, enemy.y, "#ff003c", 10); continue; }
                     if (enemy.type === 'phantom' && enemy.alpha < 0.5) continue; 
 
-                    enemy.hp -= (playerStats.smiteDmg * prestigeMult); 
+                    enemy.hp -= (pwr * prestigeMult); 
                     
                     if (enemy.hp <= 0) {
                         createExplosion(enemy.x, enemy.y, enemy.color, 50); 
@@ -1312,17 +1399,28 @@
                 
                 ctx.fillRect(e.x - e.size - sPulse/2, e.y - e.size - sPulse/2, e.size*2 + sPulse, e.size*2 + sPulse);
                 
-                ctx.fillStyle = "#fff"; 
                 ctx.font = e.type === 'boss' ? "bold 30px 'VT323', monospace" : "bold 18px 'VT323', monospace"; 
-                ctx.textAlign = "center"; 
                 
                 // Z-TYPE MECHANIC: Slice word if it is currently locked!
                 let displayWord = e.word;
                 if (targetLock && targetLock.type === 'enemy' && targetLock.ref === e) {
                     displayWord = e.word.substring(lockString.length);
                 }
+
+                // DRAW SOLID BACKGROUND FOR THE TEXT TO PREVENT OVERLAPPING VISUALS
+                let textWidth = ctx.measureText(displayWord).width;
+                let textY = e.y - e.size - 10 - sPulse;
                 
-                ctx.fillText(displayWord, e.x, e.y - e.size - 10 - sPulse);
+                ctx.fillStyle = "rgba(0, 5, 10, 0.85)"; 
+                ctx.fillRect(e.x - textWidth/2 - 4, textY - (e.type === 'boss' ? 24 : 16), textWidth + 8, (e.type === 'boss' ? 32 : 20));
+                
+                ctx.lineWidth = 1;
+                ctx.strokeRect(e.x - textWidth/2 - 4, textY - (e.type === 'boss' ? 24 : 16), textWidth + 8, (e.type === 'boss' ? 32 : 20));
+                
+                // DRAW THE TEXT ITSELF
+                ctx.fillStyle = "#fff"; 
+                ctx.textAlign = "center"; 
+                ctx.fillText(displayWord, e.x, textY);
             }
 
             if ((e.type === 'boss' || e.type === 'goliath') && !e.shielded) {
@@ -1519,7 +1617,6 @@
                     ctx.strokeStyle = "#00f3ff"; 
                     ctx.strokeRect(b.x - 20, b.y - 20, 40, 40);
                     
-                    ctx.fillStyle = "#fff"; 
                     ctx.font = "bold 20px 'VT323'"; 
                     ctx.textAlign = "center"; 
                     
@@ -1527,7 +1624,19 @@
                     if (targetLock && targetLock.type === 'building' && targetLock.ref === b) {
                         displayWord = b.word.substring(lockString.length);
                     }
-                    ctx.fillText(displayWord, b.x, b.y - 30);
+
+                    // DRAW SOLID BACKGROUND FOR ENCRYPTED BUILDINGS
+                    let textWidth = ctx.measureText(displayWord).width;
+                    let textY = b.y - 30;
+                    
+                    ctx.fillStyle = "rgba(0, 5, 10, 0.85)"; 
+                    ctx.fillRect(b.x - textWidth/2 - 4, textY - 16, textWidth + 8, 20);
+                    
+                    ctx.lineWidth = 1;
+                    ctx.strokeRect(b.x - textWidth/2 - 4, textY - 16, textWidth + 8, 20);
+
+                    ctx.fillStyle = "#fff"; 
+                    ctx.fillText(displayWord, b.x, textY);
                 }
 
                 if (b.type === 'sentry' || b.type === 'zephyr_sentry') {
@@ -2031,6 +2140,33 @@
                 if (mark.life <= 0) scorchMarks.splice(i, 1); 
             }
 
+            // Draw Z-Type Letter Projectiles
+            ctx.font = "bold 28px 'VT323', monospace";
+            ctx.textAlign = "center";
+            for (let i = letterProjectiles.length - 1; i >= 0; i--) {
+                let lp = letterProjectiles[i];
+                let dx = lp.tx - lp.x;
+                let dy = lp.ty - lp.y;
+                let dist = Math.hypot(dx, dy);
+                
+                if (dist < lp.speed) {
+                    createExplosion(lp.tx, lp.ty, "#39ff14", 8);
+                    letterProjectiles.splice(i, 1);
+                } else {
+                    lp.x += (dx / dist) * lp.speed * timeScale;
+                    lp.y += (dy / dist) * lp.speed * timeScale;
+                    
+                    // Trail behind letter
+                    ctx.fillStyle = "rgba(57, 255, 20, 0.4)";
+                    ctx.beginPath(); 
+                    ctx.arc(lp.x - (dx/dist)*12, lp.y - (dy/dist)*12, 5, 0, Math.PI*2); 
+                    ctx.fill();
+                    
+                    ctx.fillStyle = "#39ff14";
+                    ctx.fillText(lp.char, lp.x, lp.y);
+                }
+            }
+
             let fortressFrontLine = canvas.width - (100 + Math.floor((playerStats.maxMana - 100) / 25) * 6) - 15;
 
             for (let i = enemies.length - 1; i >= 0; i--) {
@@ -2294,6 +2430,9 @@
                 comboEl.style.textShadow = "none"; 
             }
 
+            // Anomaly Mana Modifier
+            let anomalyManaMult = currentAnomaly.name === "DATA_LEAK" ? 0.5 : 1.0;
+
             // Mana Regen Math
             let comboMult = 1.0;
             if (combo > 10) comboMult = 1.5;
@@ -2301,7 +2440,7 @@
             if (combo > 40) comboMult = 3.0;
 
             if (currentMana < playerStats.maxMana) { 
-                currentMana += playerStats.manaRegen * timeScale * comboMult; 
+                currentMana += playerStats.manaRegen * timeScale * comboMult * anomalyManaMult; 
                 if (currentMana > playerStats.maxMana) currentMana = playerStats.maxMana; 
             }
             
