@@ -313,9 +313,14 @@
         let recentWords = []; const memorySize = 4;
         let currentFinalScore = 0; 
 
-        const shortWords = ["data", "wire", "core", "byte", "chip", "node", "link", "port", "disk", "ping", "boot", "host", "user", "file", "path", "code", "lock", "key", "scan", "task", "grid", "wave", "sync", "hash", "salt", "cache", "proxy", "admin", "token", "cloud"];
-        const longWords = ["network", "system", "memory", "access", "control", "process", "command", "digital", "virtual", "circuit", "gateway", "firewall", "security", "terminal", "hardware", "software", "database", "protocol", "bandwidth", "encrypt", "malware", "monitor", "server", "router", "traffic"];
-        const bossWords = ["mainframe_override", "system_breach", "critical_failure", "unauthorized_access", "recursive_loop", "neural_network", "quantum_compute", "encryption_key", "security_bypass", "hardware_malfunction", "denial_of_service"];
+        // ==========================================
+        // DYNAMIC DICTIONARIES (SCALING DIFFICULTY)
+        // ==========================================
+        const shortWords = ["data", "wire", "core", "byte", "chip", "node", "link", "port", "disk", "ping", "boot", "host", "user", "file", "path", "code", "lock", "key", "scan", "task", "grid", "wave", "sync", "hash", "salt", "bug", "ram", "cpu", "gpu", "bit", "hex", "lan", "wan", "mac", "ip", "bot", "hub", "log", "net", "web", "ssl", "tcp", "udp", "tag", "api", "gui", "cli", "dev", "ops", "sdk"];
+        const mediumWords = ["network", "system", "memory", "access", "router", "server", "switch", "domain", "packet", "socket", "proxy", "admin", "token", "cloud", "cache", "cipher", "client", "daemon", "dongle", "duplex", "export", "filter", "folder", "hacker", "kernel", "legacy", "matrix", "module", "object", "offline", "online", "output", "plugin", "reboot", "script", "sector", "source", "subnet", "syntax", "thread", "update", "upload", "uptime", "vector", "widget", "window", "botnet", "buffer", "cookie", "crypto"];
+        const longWords = ["bandwidth", "firewall", "protocol", "security", "terminal", "hardware", "software", "database", "malware", "monitor", "traffic", "algorithm", "analytics", "animation", "backdoor", "bluetooth", "broadband", "clipboard", "compiler", "dashboard", "developer", "directory", "emulation", "encryption", "ethernet", "extension", "framework", "freeware", "gigabyte", "hyperlink", "interface", "javascript", "keylogger", "localhost", "mainframe", "middleware", "motherboard", "multimedia", "parameter", "partition", "password", "phishing", "processor", "shareware", "spyware", "terabyte", "variable", "virtual", "workspace", "xml"];
+        const complexWords = ["vulnerability", "authentication", "cryptography", "microservices", "infrastructure", "troubleshoot", "optimization", "asynchronous", "polymorphism", "encapsulation", "concatenation", "serialization", "virtualization", "multithreading", "load_balancer", "cybersecurity", "steganography", "ransomware", "ddos_attack", "brute_force", "zero_day", "blockchain", "machine_learning", "neural_network", "quantum_computing", "rootkit_detected", "buffer_overflow", "sql_injection", "cross_site_scripting", "man_in_the_middle", "payload_delivered", "sysadmin_override", "kernel_panic_init", "segmentation_fault", "unauthorized_403", "data_exfiltration"];
+        const bossWords = ["mainframe_override", "system_breach", "critical_failure", "unauthorized_access", "recursive_loop", "neural_network", "quantum_compute", "encryption_key", "security_bypass", "hardware_malfunction", "denial_of_service", "absolute_zero_day", "omega_protocol_init", "terminal_annihilation", "cyber_armageddon"];
         
         let tutorialStep = 0; let tutorialWait = 60; let tutorialTarget = null;
         let bossWarningTimer = 0;
@@ -339,30 +344,34 @@
         if (highScore > 0) document.getElementById('personal-best').textContent = `BEST SECTOR REACHED: ${highScore}`;
 
         // ==========================================
-        // DREAMLO GLOBAL LEADERBOARD API
-        // Paste your codes from dreamlo.com between these quotes!
+        // DREAMLO GLOBAL LEADERBOARD API (GITHUB PAGES FIX)
         // ==========================================
-        const DREAMLO_PUBLIC_CODE = "69e11f208f40bb10681d516e"; // <--- PASTE PUBLIC CODE HERE
-        const DREAMLO_PRIVATE_CODE = "p_mnuGlM_kiGiA7AnsWj_gmuv1v4x3tkilZ7OQO02giQ"; // <--- PASTE PRIVATE CODE HERE
+        const DREAMLO_PUBLIC_CODE = "69e11f208f40bb10681d516e";
+        const DREAMLO_PRIVATE_CODE = "p_mnuGlM_kiGiA7AnsWj_gmuv1v4x3tkilZ7OQO02giQ"; 
 
         function saveGlobalScore(initials, score) {
             let safeInitials = initials.toUpperCase().replace(/[^A-Z0-9]/g, ''); 
             if (safeInitials === "") safeInitials = "ANON";
             
+            // Bypass GitHub Pages CORS issues by sending "no-cors"
             return fetch(`https://www.dreamlo.com/lb/${DREAMLO_PRIVATE_CODE}/add/${safeInitials}/${score}`, {
                 method: 'GET',
-                mode: 'cors'
+                mode: 'no-cors'
             })
-            .then(response => console.log("Score uploaded globally!"))
+            .then(() => console.log("Score upload ping sent!"))
             .catch(err => console.error("Error uploading score:", err));
         }
 
         function fetchGlobalScores(callback) {
-            fetch(`https://www.dreamlo.com/lb/${DREAMLO_PUBLIC_CODE}/json`, {
-                method: 'GET',
-                mode: 'cors'
+            // Bypass GitHub Pages blocking fetch by using allorigins proxy
+            const dreamloUrl = `https://www.dreamlo.com/lb/${DREAMLO_PUBLIC_CODE}/json`;
+            const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(dreamloUrl)}`;
+
+            fetch(proxyUrl)
+            .then(response => {
+                if (!response.ok) throw new Error("Network response was not ok");
+                return response.json();
             })
-            .then(response => response.json())
             .then(data => {
                 if (!data || !data.dreamlo || !data.dreamlo.leaderboard || !data.dreamlo.leaderboard.entry) {
                     callback([]); 
@@ -836,8 +845,7 @@
                 document.getElementById('shop-souls').style.color = "#fff"; 
                 setTimeout(() => document.getElementById('shop-souls').style.color = "var(--term-cyan)", 150);
                 
-                // Triggers the dynamically assigned UI fix
-                updateShopUI();
+                updateShopUI(); // Dynamically updates visual costs in shop
             }
         }
 
@@ -875,14 +883,29 @@
                 e.speed = (Math.random() * 1.5 + 2.0) * speedScale; e.size = 12; e.hp = 1; e.maxHp = 1; e.color = cWorm; 
             } else if (type === 'trojan') {
                 e.speed = 0.4 * speedScale; e.size = 28; e.maxHp = Math.floor(6 * hpScale); e.hp = e.maxHp; e.color = cTrojan; e.shielded = true; 
-                const dict = wave < 4 ? shortWords : shortWords.concat(longWords); e.word = dict[Math.floor(Math.random() * dict.length)];
+                
+                // DYNAMIC DIFFICULTY DICTIONARY SCALING
+                let dict = [];
+                if (wave < 4) dict = shortWords;
+                else if (wave < 8) dict = shortWords.concat(mediumWords);
+                else if (wave < 12) dict = mediumWords.concat(longWords);
+                else if (wave < 18) dict = longWords;
+                else if (wave < 25) dict = longWords.concat(complexWords);
+                else dict = complexWords;
+                
+                e.word = dict[Math.floor(Math.random() * dict.length)];
+                
             } else if (type === 'brute') {
                 e.speed = 0.25 * speedScale; e.size = 36; e.maxHp = Math.floor(20 * hpScale); e.hp = e.maxHp; e.color = cBrute; e.shielded = false; 
             } else if (type === 'emp') { 
                 e.speed = 0.6 * speedScale; e.size = 25; e.maxHp = Math.floor(8 * hpScale); e.hp = e.maxHp; e.color = cEmp; e.shielded = true; e.word = "emp";
             } else if (type === 'cipher') {
                 e.speed = 0.18 * speedScale; e.size = 35; e.maxHp = Math.floor(10 * hpScale); e.hp = e.maxHp; e.color = cCipher; e.shielded = true; 
-                e.word = '0x' + Math.floor(Math.random() * 65535).toString(16).toLowerCase();
+                
+                // Ciphers get longer hex strings over time
+                let hexLengthMultiplier = wave > 15 ? 4294967295 : 65535;
+                e.word = '0x' + Math.floor(Math.random() * hexLengthMultiplier).toString(16).toLowerCase();
+                
             } else if (type === 'phantom') {
                 e.speed = 0.8 * speedScale; e.size = 24; e.maxHp = Math.floor(5 * hpScale); e.hp = e.maxHp; e.color = "#fff"; e.shielded = false; e.blink = 0;
             } else if (type === 'goliath') {
@@ -1610,7 +1633,12 @@
                             let unencryptedBuilds = buildings.filter(b => !b.encrypted);
                             if (unencryptedBuilds.length > 0) {
                                 let targetB = unencryptedBuilds[Math.floor(Math.random() * unencryptedBuilds.length)];
-                                targetB.encrypted = true; targetB.word = shortWords[Math.floor(Math.random() * shortWords.length)];
+                                targetB.encrypted = true; 
+                                
+                                // Boss uses dynamic scaling dictionary to encrypt your buildings
+                                let dict = wave > 15 ? complexWords : (wave > 8 ? longWords : mediumWords);
+                                targetB.word = dict[Math.floor(Math.random() * dict.length)];
+                                
                                 createExplosion(targetB.x, targetB.y, "#00f3ff", 20); sndError();
                             }
                         }
