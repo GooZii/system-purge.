@@ -1712,7 +1712,7 @@
             
             ctx.restore(); 
 
-            if (currentMana < playerStats.maxMana) { currentMana += playerStats.manaRegen; if (currentMana > playerStats.maxMana) currentMana = playerStats.maxMana; }
+            if (currentMana < playerStats.maxMana) { currentMana += playerStats.manaRegen * timeScale; if (currentMana > playerStats.maxMana) currentMana = playerStats.maxMana; }
             
             document.getElementById('ui-faith').textContent = `SYS.HEALTH: ${Math.floor(playerStats.faith)}%`;
             
