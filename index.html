@@ -152,11 +152,11 @@
         #mana-bar { height: 100%; background: var(--term-cyan); width: 100%; transition: width 0.1s linear; }
         #mana-text { position: absolute; width: 100%; text-align: center; font-size: 1.6rem; line-height: 25px; color: #000; mix-blend-mode: difference; font-weight: bold;}
 
-        #boot-log { text-align: left; width: 80%; font-size: 1.8rem; color: #889; margin-bottom: 30px; line-height: 1.6; min-height: 150px; }
+        #boot-log { text-align: left; width: 80%; font-size: 1.8rem; color: #889; margin-bottom: 15px; line-height: 1.6; min-height: 120px; }
         .log-sys { color: var(--term-red); text-shadow: 0 0 5px var(--term-red);}
         .log-cmd { color: var(--term-cyan); text-shadow: 0 0 5px var(--term-cyan);}
         
-        #personal-best { color: var(--term-cyan); font-size: 2rem; margin-top: 15px; text-shadow: 0 0 5px var(--term-cyan); }
+        #personal-best { color: var(--term-cyan); font-size: 2rem; margin-top: 10px; text-shadow: 0 0 5px var(--term-cyan); }
         
         /* LEADERBOARD STYLES */
         .leaderboard-container { width: 80%; max-width: 600px; background: rgba(5, 10, 15, 0.9); border: 2px solid var(--term-cyan); padding: 20px; box-shadow: 0 0 20px rgba(0,243,255,0.2); margin-bottom: 20px;}
@@ -206,6 +206,14 @@
                 > TO INITIATE SEQUENCE, TYPE: <span class="log-cmd blink-cmd">sys.boot</span> IN TERMINAL BELOW.
             </div>
             <div id="personal-best"></div>
+            
+            <div id="custom-dict-container" style="margin-top: 10px; margin-bottom: 10px; text-align: center;">
+                <button id="btn-toggle-dict" onclick="toggleCustomDict()" style="background: #112; color: var(--term-cyan); font-size: 1.2rem; padding: 5px 15px;">[ ENABLE CUSTOM DICTIONARY ]</button>
+                <div id="custom-dict-ui" style="display: none; margin-top: 10px; flex-direction: column; align-items: center;">
+                    <textarea id="custom-dict-input" placeholder="Type your custom words here, separated by spaces or commas..." style="width: 400px; height: 80px; background: rgba(0, 2, 5, 0.9); color: var(--term-green); border: 2px solid var(--term-cyan); font-family: 'VT323', monospace; font-size: 1.5rem; padding: 10px; outline: none; resize: none;"></textarea>
+                </div>
+            </div>
+
             <div>
                 <button id="btn-start" class="pulse-btn" onclick="startGame()" style="display: none; background: var(--term-cyan);">[ INITIALIZE ]</button>
                 <button onclick="showLeaderboardScreen()" style="background: var(--term-orange);">[ GLOBAL LEADERBOARD ]</button>
@@ -322,6 +330,26 @@
         const complexWords = ["vulnerability", "authentication", "cryptography", "microservices", "infrastructure", "troubleshoot", "optimization", "asynchronous", "polymorphism", "encapsulation", "concatenation", "serialization", "virtualization", "multithreading", "load_balancer", "cybersecurity", "steganography", "ransomware", "ddos_attack", "brute_force", "zero_day", "blockchain", "machine_learning", "neural_network", "quantum_computing", "rootkit_detected", "buffer_overflow", "sql_injection", "cross_site_scripting", "man_in_the_middle", "payload_delivered", "sysadmin_override", "kernel_panic_init", "segmentation_fault", "unauthorized_403", "data_exfiltration"];
         const bossWords = ["mainframe_override", "system_breach", "critical_failure", "unauthorized_access", "recursive_loop", "neural_network", "quantum_compute", "encryption_key", "security_bypass", "hardware_malfunction", "denial_of_service", "absolute_zero_day", "omega_protocol_init", "terminal_annihilation", "cyber_armageddon"];
         
+        let customWordsList = [];
+        let useCustomWords = false;
+
+        function toggleCustomDict() {
+            useCustomWords = !useCustomWords;
+            const ui = document.getElementById('custom-dict-ui');
+            const btn = document.getElementById('btn-toggle-dict');
+            if (useCustomWords) {
+                ui.style.display = 'flex';
+                btn.textContent = "[ CUSTOM DICTIONARY: ON ]";
+                btn.style.background = "var(--term-cyan)";
+                btn.style.color = "#000";
+            } else {
+                ui.style.display = 'none';
+                btn.textContent = "[ ENABLE CUSTOM DICTIONARY ]";
+                btn.style.background = "#112";
+                btn.style.color = "var(--term-cyan)";
+            }
+        }
+
         let tutorialStep = 0; let tutorialWait = 60; let tutorialTarget = null;
         let bossWarningTimer = 0;
         
@@ -720,6 +748,16 @@
         }
 
         function startGame() {
+            if (useCustomWords) {
+                let rawInput = document.getElementById('custom-dict-input').value;
+                customWordsList = rawInput.split(/[\s,]+/).map(w => w.trim().toLowerCase()).filter(w => w.length > 0);
+                if (customWordsList.length === 0) {
+                    useCustomWords = false;
+                    document.getElementById('btn-toggle-dict').textContent = "[ ENABLE CUSTOM DICTIONARY (EMPTY) ]";
+                    document.getElementById('btn-toggle-dict').style.background = "#112";
+                }
+            }
+
             sndExplode();
             shakeFrames = 20; 
             damageFlash = 1.0; 
@@ -884,15 +922,17 @@
             } else if (type === 'trojan') {
                 e.speed = 0.4 * speedScale; e.size = 28; e.maxHp = Math.floor(6 * hpScale); e.hp = e.maxHp; e.color = cTrojan; e.shielded = true; 
                 
-                // DYNAMIC DIFFICULTY DICTIONARY SCALING
                 let dict = [];
-                if (wave < 4) dict = shortWords;
-                else if (wave < 8) dict = shortWords.concat(mediumWords);
-                else if (wave < 12) dict = mediumWords.concat(longWords);
-                else if (wave < 18) dict = longWords;
-                else if (wave < 25) dict = longWords.concat(complexWords);
-                else dict = complexWords;
-                
+                if (useCustomWords && customWordsList.length > 0) {
+                    dict = customWordsList;
+                } else {
+                    if (wave < 4) dict = shortWords;
+                    else if (wave < 8) dict = shortWords.concat(mediumWords);
+                    else if (wave < 12) dict = mediumWords.concat(longWords);
+                    else if (wave < 18) dict = longWords;
+                    else if (wave < 25) dict = longWords.concat(complexWords);
+                    else dict = complexWords;
+                }
                 e.word = dict[Math.floor(Math.random() * dict.length)];
                 
             } else if (type === 'brute') {
@@ -1519,10 +1559,12 @@
                         let bSpeed = sType === 'dreadnought' ? 0.06 : (sType === 'cryptolocker' ? 0.25 : 0.12);
                         let bColor = sType === 'dreadnought' ? "#8800ff" : (sType === 'swarm_queen' ? "#ff003c" : "#00f3ff");
 
+                        let dict = (useCustomWords && customWordsList.length > 0) ? customWordsList : bossWords;
+
                         let e = { 
                             x: -80, y: canvas.height/2, type: 'boss', subType: sType, shielded: true, isPhase2: false,
                             speed: bSpeed * speedScale, size: bSize, hp: Math.floor(bHp * hpScale), maxHp: Math.floor(bHp * hpScale), color: bColor,
-                            word: bossWords[Math.floor(Math.random() * bossWords.length)]
+                            word: dict[Math.floor(Math.random() * dict.length)]
                         };
                         enemies.push(e); enemiesToSpawn--; activeBoss = e;
                         
@@ -1637,8 +1679,12 @@
                                 let targetB = unencryptedBuilds[Math.floor(Math.random() * unencryptedBuilds.length)];
                                 targetB.encrypted = true; 
                                 
-                                // Boss uses dynamic scaling dictionary to encrypt your buildings
-                                let dict = wave > 15 ? complexWords : (wave > 8 ? longWords : mediumWords);
+                                let dict = [];
+                                if (useCustomWords && customWordsList.length > 0) {
+                                    dict = customWordsList;
+                                } else {
+                                    dict = wave > 15 ? complexWords : (wave > 8 ? longWords : mediumWords);
+                                }
                                 targetB.word = dict[Math.floor(Math.random() * dict.length)];
                                 
                                 createExplosion(targetB.x, targetB.y, "#00f3ff", 20); sndError();
