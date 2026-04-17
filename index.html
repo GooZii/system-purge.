@@ -1295,6 +1295,7 @@
                         ctx.beginPath(); ctx.arc(b.x, b.y, b.territory, 0, Math.PI * 2); ctx.fill();
                         
                         if (wave > 0 && b.type === 'sentry') b.hp -= timeScale * 0.015; 
+                        if (wave > 0 && b.type === 'zephyr_sentry') b.hp -= timeScale * 0.010; 
                         
                         let target = enemies.find(e => !e.shielded && e.type !== 'egg' && Math.hypot(e.x - b.x, e.y - b.y) < b.territory && (e.type !== 'phantom' || e.alpha > 0.5));
                         if (target && empTimer <= 0) b.angle = Math.atan2(target.y - b.y, target.x - b.x);
@@ -1384,6 +1385,7 @@
                     
                     if (!b.encrypted && empTimer <= 0) {
                         if (wave > 0 && b.type === 'pulse') b.hp -= timeScale * 0.01; 
+                        if (wave > 0 && b.type === 'plasma_mortar') b.hp -= timeScale * 0.007; 
                         
                         b.charge = b.charge || 0;
                         let chargeRate = b.type === 'pulse' ? 1 : 0.8; 
