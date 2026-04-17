@@ -165,7 +165,7 @@
         /* This handles the internal logical stretch */
         canvas { 
             cursor: crosshair; display: block; position: absolute; top: 0; left: 0; z-index: 1;
-            width: 100%; height: calc(100vh - 85px); object-fit: fill; 
+            width: 100%; height: calc(100vh - 85px); object-fit: contain; 
         }
 
         #boot-log { text-align: left; width: 80%; max-width: 800px; font-size: 2rem; color: #889; margin-bottom: 20px; line-height: 1.6; min-height: 120px; }
@@ -293,8 +293,6 @@
 
     <script>
         // Fixed Internal Logical Resolution
-        // This ensures the game physics and balance remain EXACTLY the same as before, 
-        // while the CSS visually scales it to fit your widescreen monitors smoothly!
         const canvas = document.getElementById('gameCanvas'); 
         const ctx = canvas.getContext('2d');
         canvas.width = 1280;
@@ -354,7 +352,7 @@
         let currentMana = playerStats.maxMana;
         let wave = 0, enemiesToSpawn = 0, spawnTimer = 0, shakeFrames = 0, frameCount = 0;
         
-        // Entity Arrays properly initialized before anything runs!
+        // Entity Arrays
         let enemies = [], scorchMarks = [], lightnings = [], autoLasers = [], particles = [], floatingTexts = [], bgStars = []; 
         let autoNodes = []; let buildings = []; let letterProjectiles = [];
         
