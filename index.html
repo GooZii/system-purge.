@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>System_Purge.exe v4.2 (Definitive Z-Type Edition)</title>
+    <title>System_Purge.exe v4.3 (Perfect Z-Type Edition)</title>
     <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -162,10 +162,9 @@
             box-shadow: 0 0 15px rgba(0, 243, 255, 0.3); pointer-events: none;
         }
 
-        /* Object-fit contain keeps the 16:9 ratio and adds black borders where necessary */
+        /* Bulletproof JS-controlled Canvas centering */
         canvas { 
-            cursor: crosshair; display: block; position: absolute; top: 0; left: 0; z-index: 1;
-            width: 100%; height: calc(100vh - 85px); object-fit: contain; 
+            cursor: crosshair; display: block; position: absolute; z-index: 1;
         }
 
         #boot-log { text-align: left; width: 80%; max-width: 800px; font-size: 2rem; color: #889; margin-bottom: 20px; line-height: 1.6; min-height: 120px; }
@@ -292,12 +291,32 @@
     </div>
 
     <script>
-        // Game Logic rendering resolution
+        // Fixed Internal Logical Resolution & Resizer Math
         const canvas = document.getElementById('gameCanvas'); 
         const ctx = canvas.getContext('2d');
         canvas.width = 1280;
         canvas.height = 720;
 
+        function resizeCanvas() {
+            const targetRatio = 1280 / 720;
+            let w = window.innerWidth;
+            let h = window.innerHeight - 85; // Minus the terminal UI space
+            let windowRatio = w / h;
+            
+            if (windowRatio > targetRatio) {
+                w = h * targetRatio; // Letterbox (Black bars on sides)
+            } else {
+                h = w / targetRatio; // Pillarbox (Black bars top/bottom)
+            }
+            
+            canvas.style.width = w + 'px';
+            canvas.style.height = h + 'px';
+            canvas.style.left = ((window.innerWidth - w) / 2) + 'px';
+            canvas.style.top = ((window.innerHeight - 85 - h) / 2) + 'px';
+        }
+        
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
         window.addEventListener('scroll', () => { window.scrollTo(0, 0); });
         
         function toggleFullscreen() {
@@ -438,7 +457,7 @@
         // ==========================================
         function shareRun() {
             let anomalyText = currentAnomaly.name !== "NONE" ? ` | 🎲 ${currentAnomaly.name}` : "";
-            let text = `System_Purge.exe [v4.2]\nSector Reached: ${currentFinalScore}${anomalyText}\nScore: ${playerStats.souls} BYTES\n\nCan you beat my system record? 💾🔥⚡️`;
+            let text = `System_Purge.exe [v4.3]\nSector Reached: ${currentFinalScore}${anomalyText}\nScore: ${playerStats.souls} BYTES\n\nCan you beat my system record? 💾🔥⚡️`;
             
             navigator.clipboard.writeText(text).then(() => {
                 let btn = document.getElementById('btn-share');
@@ -506,36 +525,17 @@
         }
 
         // ==========================================
-        // PERFECT MOUSE CLICK MATH (Accounts for CSS Object-Fit)
+        // PERFECT MOUSE CLICK MATH (Bulletproof JS Version)
         // ==========================================
-        canvas.addEventListener('mousedown', (e) => {
+        canvas.addEventListener('pointerdown', (e) => {
             initAudio(); 
             if (gameState !== 'PLAYING') return;
             
             const rect = canvas.getBoundingClientRect(); 
-            const canvasRatio = canvas.width / canvas.height;
-            const rectRatio = rect.width / rect.height;
-            
-            let renderWidth, renderHeight, offsetX = 0, offsetY = 0;
-            
-            // Calculate actual rendered size and empty space offsets
-            if (rectRatio > canvasRatio) {
-                renderHeight = rect.height;
-                renderWidth = renderHeight * canvasRatio;
-                offsetX = (rect.width - renderWidth) / 2;
-            } else {
-                renderWidth = rect.width;
-                renderHeight = renderWidth / canvasRatio;
-                offsetY = (rect.height - renderHeight) / 2;
-            }
-            
-            const scaleX = canvas.width / renderWidth;
-            const scaleY = canvas.height / renderHeight;
-            
-            const clickX = (e.clientX - rect.left - offsetX) * scaleX; 
-            const clickY = (e.clientY - rect.top - offsetY) * scaleY;
+            const clickX = (e.clientX - rect.left) * (1280 / rect.width);
+            const clickY = (e.clientY - rect.top) * (720 / rect.height);
 
-            // Prevent interacting if they click outside the game area (in the black bars)
+            // Prevent interacting if they click completely out of bounds somehow
             if (clickX < 0 || clickX > canvas.width || clickY < 0 || clickY > canvas.height) return;
 
             // Fix for "Stuck in Type Mode": Clicking the background cancels the lock!
@@ -641,7 +641,7 @@
             }
         });
 
-        // Makes sure we keep keyboard focus when casually clicking UI
+        // Keeps keyboard focus when casually clicking UI
         document.querySelector('.game-wrapper').addEventListener('click', (e) => { 
             initAudio(); 
             if (e.target.tagName !== 'TEXTAREA' && e.target.tagName !== 'INPUT' && e.target.tagName !== 'BUTTON' && !e.target.closest('button') && !e.target.closest('.building-option')) {
@@ -649,7 +649,7 @@
             }
         });
 
-        // Fixed Keydown listener so '1' doesn't get typed into the command line when hitting a hotkey!
+        // Fixed Keydown listener so HOTKEYS don't fight the typing engine
         window.addEventListener('keydown', (e) => {
             if (gameState === 'PLAYING' && !targetLock) {
                 if (['1','2','3','4','5','6'].includes(e.key)) {
@@ -671,7 +671,7 @@
         });
 
         // ==========================================
-        // Z-TYPE INPUT ENGINE (Fixed for auto-complete and fast typists)
+        // Z-TYPE INPUT ENGINE (Completely Rewritten Loop)
         // ==========================================
         cmdInput.addEventListener('input', (e) => {
             initAudio();
@@ -690,11 +690,14 @@
                 return;
             }
 
-            // Process all newly added characters (Supports mobile word-pasting!)
+            // Read all NEW characters added this exact frame (Solves the copy/paste/fast-type bug!)
             let newChars = val.slice(lockString.length);
             
             for (let i = 0; i < newChars.length; i++) {
                 let key = newChars[i];
+
+                // Ignore trailing spaces so you don't ruin your combo by hitting spacebar
+                if (key === ' ') continue;
 
                 if (!targetLock) {
                     // Gather all available targets to lock onto
@@ -725,7 +728,7 @@
                     } else {
                         combo = 0; sndError();
                         if (gameState === 'PLAYING') { shakeFrames = 3; document.getElementById('cmd-input').style.background = "rgba(255,0,60,0.3)"; setTimeout(() => document.getElementById('cmd-input').style.background = "transparent", 150); }
-                        break; // Stop parsing if wrong
+                        break; // Stop parsing chars if wrong
                     }
                 } else {
                     let expectedKey = targetLock.word.charAt(lockString.length);
@@ -736,12 +739,12 @@
                         if (lockString === targetLock.word) {
                             executeLock(targetLock);
                             targetLock = null; lockString = ""; focusMode = false; gameContainer.classList.remove('focus-mode');
-                            break; // Stop parsing if word is complete
+                            break; // Stop parsing chars because word is finished
                         }
                     } else {
                         combo = 0; sndError();
                         if (gameState === 'PLAYING') { shakeFrames = 3; document.getElementById('cmd-input').style.background = "rgba(255,0,60,0.3)"; setTimeout(() => document.getElementById('cmd-input').style.background = "transparent", 150); }
-                        break; // Stop parsing if wrong
+                        break; // Stop parsing chars if wrong
                     }
                 }
             }
@@ -768,7 +771,7 @@
                 y: startY,
                 tx: tx,
                 ty: ty,
-                speed: 25 // Slower speed so players can admire the lasers!
+                speed: 25 
             });
         }
 
@@ -836,9 +839,13 @@
 
         function togglePlacement(type) {
             if (placementMode === type) {
+                targetLock = null; lockString = ""; cmdInput.value = "";
                 placementMode = null; gameContainer.classList.remove('placement-mode');
+                focusMode = false; gameContainer.classList.remove('focus-mode');
             } else {
+                targetLock = null; lockString = ""; cmdInput.value = "";
                 placementMode = type; gameContainer.classList.add('placement-mode');
+                focusMode = false; gameContainer.classList.remove('focus-mode');
             }
             updatePlacementUI();
         }
