@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>System_Purge.exe v4.5 (Definitive Z-Type Edition)</title>
+    <title>System_Purge.exe v4.0 (Z-Type Edition)</title>
     <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -16,15 +16,11 @@
         }
 
         body {
-            font-family: 'VT323', monospace; 
-            background: #000; 
-            color: var(--term-green);
-            margin: 0; 
-            padding: 0;
-            overflow: hidden; 
-            user-select: none;
-            overscroll-behavior: none; 
-            touch-action: none;
+            font-family: 'VT323', monospace; background: #000; color: var(--term-green);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            margin: 0; overflow: hidden; user-select: none;
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; 
+            overscroll-behavior: none; touch-action: none;
         }
         
         .fs-btn {
@@ -34,25 +30,21 @@
         }
         .fs-btn:hover { background: var(--term-cyan); color: #000; }
 
-        /* Fullscreen Game Wrapper */
         .game-wrapper { 
-            position: absolute; 
-            top: 0; left: 0; 
-            width: 100vw; height: 100vh; 
-            background: var(--bg-dark);
-            display: flex; flex-direction: column; 
-            transition: box-shadow 0.3s;
-            overflow: hidden;
-            box-sizing: border-box;
+            position: relative; width: 850px; height: 600px; background: var(--bg-dark);
+            border: 4px solid #112; box-shadow: 0 0 30px rgba(0, 243, 255, 0.1);
+            display: flex; flex-direction: column; transition: box-shadow 0.3s, border-color 0.3s;
+            border-radius: 8px; overflow: hidden;
+            max-width: 100vw; max-height: calc(100vh - 60px); 
         }
         
-        .game-wrapper.focus-mode { box-shadow: inset 0 0 80px rgba(0, 243, 255, 0.4); }
-        .game-wrapper.placement-mode { box-shadow: inset 0 0 80px rgba(57, 255, 20, 0.4); cursor: cell !important; }
+        .game-wrapper.focus-mode { box-shadow: 0 0 50px rgba(0, 243, 255, 0.5); border-color: var(--term-cyan); }
+        .game-wrapper.placement-mode { box-shadow: 0 0 50px rgba(57, 255, 20, 0.5); border-color: var(--term-green); cursor: cell !important; }
 
         .crt-overlay {
             position: absolute; top: 0; left: 0; bottom: 0; right: 0; z-index: 50; pointer-events: none;
             background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%);
-            background-size: 100% 4px; box-shadow: inset 0 0 100px rgba(0,0,0,0.9);
+            background-size: 100% 4px; box-shadow: inset 0 0 80px rgba(0,0,0,0.9);
         }
 
         #boss-overlay {
@@ -61,44 +53,30 @@
 
         .terminal-container {
             height: 60px; background: #020406; border-top: 2px solid #112;
-            display: flex; align-items: center; padding: 0 20px; font-size: 2.2rem; z-index: 60; box-sizing: border-box;
-            transition: all 0.3s; position: absolute; bottom: 0; left: 0; width: 100%;
+            display: flex; align-items: center; padding: 0 15px; font-size: 2.2rem; z-index: 60; box-sizing: border-box;
+            transition: all 0.3s; position: absolute; bottom: 0; width: 100%;
         }
         .focus-mode .terminal-container { background: #001a33; border-color: var(--term-cyan); border-top: 2px solid var(--term-cyan); }
         .focus-mode #cmd-input { color: #fff; text-shadow: 0 0 5px #fff; }
 
-        .prompt { color: var(--term-cyan); margin-right: 15px; font-weight: bold; }
-        
-        /* Input specifically configured to prevent mobile predictive text bugs */
+        .prompt { color: var(--term-cyan); margin-right: 10px; font-weight: bold; }
         #cmd-input {
             background: transparent; border: none; color: var(--term-green);
-            font-family: 'VT323', monospace; font-size: 2.5rem; flex-grow: 1; outline: none; text-transform: lowercase;
+            font-family: 'VT323', monospace; font-size: 2.2rem; flex-grow: 1; outline: none; text-transform: lowercase;
             text-shadow: 0 0 3px var(--term-green); width: 100%;
         }
 
-        /* Mana Bar integrated above terminal */
-        .mana-bar-container { 
-            width: 100%; height: 25px; 
-            background-color: #000; 
-            border-top: 2px solid var(--term-green); 
-            display: flex; position: absolute; bottom: 60px; left: 0; z-index: 60; 
-            box-shadow: 0 -5px 15px rgba(57, 255, 20, 0.15); 
-            box-sizing: border-box;
-        }
-        #mana-bar { height: 100%; background: var(--term-cyan); width: 100%; transition: width 0.1s linear; }
-        #mana-text { position: absolute; width: 100%; text-align: center; font-size: 1.6rem; line-height: 25px; color: #000; mix-blend-mode: difference; font-weight: bold;}
-
         .screen {
-            position: absolute; top: 0; left: 0; width: 100%; bottom: 85px; 
+            position: absolute; top: 0; left: 0; width: 100%; bottom: 60px; 
             display: flex; flex-direction: column; align-items: center; justify-content: center;
             background: rgba(0, 2, 5, 0.95); z-index: 70; opacity: 0; pointer-events: none; 
-            transition: opacity 0.4s ease-in-out; backdrop-filter: blur(4px);
+            transition: opacity 0.4s ease-in-out; backdrop-filter: blur(2px);
             overflow-y: auto; padding: 20px 0; box-sizing: border-box;
         }
         .screen.active { opacity: 1; pointer-events: all; }
         
         .game-title { 
-            margin: 0 0 20px 0; color: var(--term-cyan); font-size: 5rem; text-transform: uppercase; 
+            margin: 0 0 20px 0; color: var(--term-cyan); font-size: 4.5rem; text-transform: uppercase; 
             letter-spacing: 2px; text-shadow: 4px 4px 0px #000, -2px -2px 0px var(--term-red); 
             animation: textGlitch 3s infinite; position: relative;
         }
@@ -111,78 +89,83 @@
         }
 
         #story-text { color: var(--term-red); font-size: 2rem; text-align: center; margin-bottom: 20px; max-width: 80%; text-shadow: 2px 2px 0px #000, 0 0 10px var(--term-red); }
-        .currency-display { font-size: 3rem; color: var(--term-cyan); margin-bottom: 20px; text-shadow: 0 0 8px var(--term-cyan); }
+        .currency-display { font-size: 2.5rem; color: var(--term-cyan); margin-bottom: 20px; text-shadow: 0 0 8px var(--term-cyan); }
         .currency-display span { color: var(--term-zephyr); text-shadow: 0 0 8px var(--term-zephyr); margin-left: 20px;}
         .prestige-display { font-size: 1.8rem; color: var(--term-red); margin-bottom: 10px; text-shadow: 0 0 5px var(--term-red); display: none; }
 
         button {
-            padding: 12px 30px; font-family: 'VT323', monospace; font-size: 2rem; letter-spacing: 1px;
-            color: #000; background: var(--term-green); border: none; cursor: pointer; text-transform: uppercase; margin: 8px;
+            padding: 10px 25px; font-family: 'VT323', monospace; font-size: 1.8rem; letter-spacing: 1px;
+            color: #000; background: var(--term-green); border: none; cursor: pointer; text-transform: uppercase; margin: 5px;
             box-shadow: 4px 4px 0px #000; transition: all 0.1s; font-weight: bold;
-            pointer-events: auto;
         }
         button:hover:not(:disabled) { transform: translate(2px, 2px); box-shadow: 2px 2px 0px #000; background: #fff;}
         button:disabled { background: #222; color: #555; box-shadow: none; cursor: not-allowed; }
 
-        .pulse-btn { animation: pulseFade 1.2s infinite alternate; border: 2px solid #fff; }
-        @keyframes pulseFade { from { box-shadow: 0 0 15px var(--term-cyan); transform: scale(1); } to { box-shadow: 0 0 35px var(--term-cyan); transform: scale(1.05); } }
+        .pulse-btn {
+            animation: pulseFade 1.2s infinite alternate; border: 2px solid #fff;
+        }
+        @keyframes pulseFade {
+            from { box-shadow: 0 0 10px var(--term-cyan); transform: scale(1); }
+            to { box-shadow: 0 0 25px var(--term-cyan); transform: scale(1.05); }
+        }
 
-        .shop-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; width: 90%; max-width: 1200px; margin-bottom: 30px; }
-        .upgrade-card { background: rgba(5, 10, 15, 0.8); border: 2px solid #334; padding: 15px; text-align: center; transition: border-color 0.2s; position: relative;}
+        .shop-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; width: 90%; margin-bottom: 20px; }
+        .upgrade-card { background: rgba(5, 10, 15, 0.8); border: 1px solid #334; padding: 10px; text-align: center; transition: border-color 0.2s; position: relative;}
         .upgrade-card:hover { border-color: var(--term-cyan); }
-        .upgrade-card h3 { margin: 0 0 10px 0; color: #fff; font-size: 1.6rem; text-shadow: 0 0 5px #fff;}
-        .upgrade-card p { margin: 0 0 15px 0; font-size: 1.2rem; color: #aaa; }
-        .upgrade-card .cost { color: var(--term-cyan); margin-bottom: 15px; display: block; font-size: 1.4rem; font-weight: bold;}
-        .new-tag { position: absolute; top: -12px; right: -12px; background: var(--term-red); color: #fff; padding: 4px 8px; font-size: 1.2rem; box-shadow: 2px 2px 0 #000; animation: blink 1s infinite;}
+        .upgrade-card h3 { margin: 0 0 5px 0; color: #fff; font-size: 1.3rem; text-shadow: 0 0 5px #fff;}
+        .upgrade-card p { margin: 0 0 10px 0; font-size: 1.1rem; color: #aaa; }
+        .upgrade-card .cost { color: var(--term-cyan); margin-bottom: 10px; display: block; font-size: 1.2rem; font-weight: bold;}
+        .new-tag { position: absolute; top: -10px; right: -10px; background: var(--term-red); color: #fff; padding: 2px 6px; font-size: 1rem; box-shadow: 2px 2px 0 #000; animation: blink 1s infinite;}
         
         @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+
         .blink-cmd { animation: blinkText 1.5s infinite; font-weight: bold; }
         @keyframes blinkText { 0%, 100% { opacity: 1; text-shadow: 0 0 10px var(--term-cyan); } 50% { opacity: 0.4; text-shadow: none; } }
 
         .tier-2, .tier-3, .tier-4, .tier-5, .tier-6 { display: none; }
 
         .ui-overlay { 
-            position: absolute; bottom: 85px; left: 20px; right: 20px; 
-            display: flex; flex-direction: column; justify-content: flex-end; align-items: flex-start; font-size: 1.8rem; 
+            position: absolute; bottom: 65px; left: 10px; right: 10px; 
+            display: flex; flex-direction: column; justify-content: flex-end; align-items: flex-start; font-size: 1.6rem; 
             pointer-events: none; z-index: 40; text-shadow: 2px 2px 0 #000; 
-            background: linear-gradient(to top, rgba(0,0,0,0.8), transparent); padding: 25px 20px 10px 20px; 
+            background: linear-gradient(to top, rgba(0,0,0,0.8), transparent); padding: 15px 15px 5px 15px; 
         }
 
-        .ui-top-row { display: flex; justify-content: space-between; width: 100%; margin-bottom: 15px;}
+        .ui-top-row { display: flex; justify-content: space-between; width: 100%; margin-bottom: 10px;}
         
-        .hotkey-bar { font-size: 1.6rem; color: #fff; opacity: 0.8; display: flex; gap: 15px; flex-wrap: wrap; pointer-events: auto;}
-        .hotkey-bar .building-option { transition: all 0.2s; padding: 6px 12px; border: 1px solid transparent; border-radius: 4px; cursor: pointer; background: rgba(0,0,0,0.5);}
-        .hotkey-bar .building-option:hover { border-color: var(--term-cyan); background: rgba(0, 243, 255, 0.2); }
-        .hotkey-bar .building-option.active { border-color: var(--term-green); background: rgba(57, 255, 20, 0.3); opacity: 1; box-shadow: 0 0 10px var(--term-green);}
+        .hotkey-bar { font-size: 1.4rem; color: #fff; opacity: 0.8; display: flex; gap: 10px; flex-wrap: wrap;}
+        .hotkey-bar .building-option { transition: all 0.2s; padding: 2px 6px; border: 1px solid transparent; border-radius: 4px; }
+        .hotkey-bar .building-option.active { border-color: var(--term-green); background: rgba(57, 255, 20, 0.2); opacity: 1;}
         .hotkey-bar span.key { color: var(--term-green); font-weight: bold; }
 
         #building-tooltip {
-            position: absolute; top: 30px; left: 50%; transform: translateX(-50%);
-            background: rgba(0, 0, 0, 0.85); border: 2px solid var(--term-cyan);
-            color: var(--term-cyan); padding: 10px 20px; font-size: 1.8rem;
+            position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.85); border: 1px solid var(--term-cyan);
+            color: var(--term-cyan); padding: 8px 15px; font-size: 1.6rem;
             z-index: 100; text-align: center; display: none;
-            box-shadow: 0 0 15px rgba(0, 243, 255, 0.3); pointer-events: none;
+            box-shadow: 0 0 10px rgba(0, 243, 255, 0.3); pointer-events: none;
         }
 
-        /* Object-fit contain keeps the 16:9 ratio and adds black borders where necessary */
-        canvas { 
-            cursor: crosshair; display: block; position: absolute; top: 0; left: 0; z-index: 1;
-            width: 100%; height: calc(100vh - 85px); object-fit: contain; 
-        }
+        canvas { cursor: crosshair; max-width: 100%; height: auto; display: block; }
 
-        #boot-log { text-align: left; width: 80%; max-width: 800px; font-size: 2rem; color: #889; margin-bottom: 20px; line-height: 1.6; min-height: 120px; }
+        .mana-bar-container { width: 850px; max-width: 100%; height: 25px; background-color: #000; border: 2px solid var(--term-green); margin-top: 15px; display: flex; position: relative; box-shadow: 0 0 10px rgba(57, 255, 20, 0.2);}
+        #mana-bar { height: 100%; background: var(--term-cyan); width: 100%; transition: width 0.1s linear; }
+        #mana-text { position: absolute; width: 100%; text-align: center; font-size: 1.6rem; line-height: 25px; color: #000; mix-blend-mode: difference; font-weight: bold;}
+
+        #boot-log { text-align: left; width: 80%; font-size: 1.8rem; color: #889; margin-bottom: 15px; line-height: 1.6; min-height: 120px; }
         .log-sys { color: var(--term-red); text-shadow: 0 0 5px var(--term-red);}
         .log-cmd { color: var(--term-cyan); text-shadow: 0 0 5px var(--term-cyan);}
         
-        #personal-best { color: var(--term-cyan); font-size: 2.5rem; margin-top: 15px; margin-bottom: 20px; text-shadow: 0 0 8px var(--term-cyan); }
+        #personal-best { color: var(--term-cyan); font-size: 2rem; margin-top: 10px; text-shadow: 0 0 5px var(--term-cyan); }
         
-        .leaderboard-container { width: 80%; max-width: 800px; background: rgba(5, 10, 15, 0.9); border: 2px solid var(--term-cyan); padding: 25px; box-shadow: 0 0 20px rgba(0,243,255,0.2); margin-bottom: 25px;}
-        .leaderboard-entry { display: flex; justify-content: space-between; font-size: 2.2rem; border-bottom: 1px dashed #334; padding: 8px 0; color: #fff;}
+        /* LEADERBOARD STYLES */
+        .leaderboard-container { width: 80%; max-width: 600px; background: rgba(5, 10, 15, 0.9); border: 2px solid var(--term-cyan); padding: 20px; box-shadow: 0 0 20px rgba(0,243,255,0.2); margin-bottom: 20px;}
+        .leaderboard-entry { display: flex; justify-content: space-between; font-size: 2rem; border-bottom: 1px dashed #334; padding: 5px 0; color: #fff;}
         .leaderboard-entry:nth-child(1) { color: var(--term-orange); font-weight: bold; text-shadow: 0 0 5px var(--term-orange); }
         .leaderboard-entry:nth-child(2) { color: #ccc; }
         .leaderboard-entry:nth-child(3) { color: #a67c00; }
-        #name-input-box { margin-top: 25px; display: none; flex-direction: column; align-items: center; }
-        #player-initials { background: #000; color: var(--term-green); border: 2px solid var(--term-green); font-family: 'VT323'; font-size: 3.5rem; text-align: center; width: 120px; text-transform: uppercase; outline: none; margin: 15px; }
+        #name-input-box { margin-top: 20px; display: none; flex-direction: column; align-items: center; }
+        #player-initials { background: #000; color: var(--term-green); border: 2px solid var(--term-green); font-family: 'VT323'; font-size: 3rem; text-align: center; width: 100px; text-transform: uppercase; outline: none; margin: 10px; }
     </style>
 </head>
 <body>
@@ -194,38 +177,33 @@
         <div class="crt-overlay"></div>
         <div id="building-tooltip"></div> 
         
-        <div id="active-commands-ui" style="display:none; position: absolute; right: 20px; bottom: 100px; color: var(--term-cyan); font-size: 1.8rem; z-index: 50; text-shadow: 0 0 5px var(--term-cyan);">
+        <div id="active-commands-ui" style="display:none; position: absolute; right: 15px; bottom: 65px; color: var(--term-cyan); font-size: 1.4rem; z-index: 50; text-shadow: 0 0 5px var(--term-cyan);">
             CMDS: <span style="color:#fff;">repair</span> (80E) | <span style="color:#fff;">overclock</span> (-20H) | <span style="color:#fff;">purge</span> (50E)
         </div>
 
-        <canvas id="gameCanvas"></canvas>
+        <canvas id="gameCanvas" width="850" height="540"></canvas>
         
         <div class="ui-overlay" id="in-game-ui" style="display: none;">
             <div class="ui-top-row">
-                <div id="ui-faith" style="color: var(--term-green); font-size: 2.5rem; font-weight: bold;">SYS.HEALTH: 100%</div>
-                <div id="ui-anomaly" style="color: var(--term-cyan); font-size: 2.2rem; font-weight: bold; margin-top: 5px; text-shadow: 0 0 5px var(--term-cyan);">ANOMALY: NONE</div>
-                <div id="ui-combo" style="color: var(--term-orange); font-size: 2.5rem; font-weight: bold; opacity: 0.5; transition: all 0.2s;">COMBO: 0</div>
+                <div id="ui-faith" style="color: var(--term-green); font-size: 2.2rem; font-weight: bold;">SYS.HEALTH: 100%</div>
+                <div id="ui-anomaly" style="color: var(--term-cyan); font-size: 1.8rem; font-weight: bold; margin-top: 5px; text-shadow: 0 0 5px var(--term-cyan);">ANOMALY: NONE</div>
+                <div id="ui-combo" style="color: var(--term-orange); font-size: 2.2rem; font-weight: bold; opacity: 0.5; transition: all 0.2s;">COMBO: 0</div>
                 <div id="ui-wave" style="color: #fff; opacity: 0.5;">SECTOR: 1</div>
-                <div id="ui-score" style="color: var(--term-cyan); font-size: 2.5rem;">BYTES: 0</div>
+                <div id="ui-score" style="color: var(--term-cyan); font-size: 2.2rem;">BYTES: 0</div>
             </div>
             <div class="hotkey-bar" id="hotkeys">
-                <div id="hk-1" class="building-option" onclick="togglePlacement('sentry')"><span class="key">[ 1 ]</span> SENTRY (<span id="cost-sentry">60</span>)</div>
-                <div id="hk-2" class="building-option" onclick="togglePlacement('firewall')"><span class="key">[ 2 ]</span> FIREWALL (40)</div>
-                <div id="hk-3" class="building-option" onclick="togglePlacement('mine')"><span class="key">[ 3 ]</span> MINE (30)</div>
-                <div id="hk-4" class="building-option" onclick="togglePlacement('pulse')" style="display:none;"><span class="key">[ 4 ]</span> PULSE (120)</div>
-                <div id="hk-5" class="building-option" onclick="togglePlacement('zephyr_sentry')" style="display:none;"><span class="key">[ 5 ]</span> Z-SENTRY (<span style="color:var(--term-zephyr)">50Z</span>)</div>
-                <div id="hk-6" class="building-option" onclick="togglePlacement('plasma_mortar')" style="display:none;"><span class="key">[ 6 ]</span> P-MORTAR (<span style="color:var(--term-zephyr)">100Z</span>)</div>
+                <div id="hk-1" class="building-option"><span class="key">[ 1 ]</span> SENTRY (<span id="cost-sentry">60</span>)</div>
+                <div id="hk-2" class="building-option"><span class="key">[ 2 ]</span> FIREWALL (40)</div>
+                <div id="hk-3" class="building-option"><span class="key">[ 3 ]</span> MINE (30)</div>
+                <div id="hk-4" class="building-option" style="display:none;"><span class="key">[ 4 ]</span> PULSE (120)</div>
+                <div id="hk-5" class="building-option" style="display:none;"><span class="key">[ 5 ]</span> Z-SENTRY (<span style="color:var(--term-zephyr)">50Z</span>)</div>
+                <div id="hk-6" class="building-option" style="display:none;"><span class="key">[ 6 ]</span> P-MORTAR (<span style="color:var(--term-zephyr)">100Z</span>)</div>
             </div>
-        </div>
-
-        <div class="mana-bar-container">
-            <div id="mana-bar"></div>
-            <div id="mana-text">100 / 100</div>
         </div>
 
         <div class="terminal-container" id="terminal-box">
             <span class="prompt">C:\></span>
-            <input type="text" id="cmd-input" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" autofocus>
+            <input type="text" id="cmd-input" autocomplete="off" spellcheck="false" autofocus>
         </div>
 
         <div id="start-screen" class="screen active">
@@ -236,10 +214,10 @@
             </div>
             <div id="personal-best"></div>
             
-            <div id="custom-dict-container" style="margin-top: 10px; margin-bottom: 20px; text-align: center;">
-                <button id="btn-toggle-dict" onclick="toggleCustomDict()" style="background: #112; color: var(--term-cyan); font-size: 1.5rem; padding: 10px 20px;">[ ENABLE CUSTOM DICTIONARY ]</button>
-                <div id="custom-dict-ui" style="display: none; margin-top: 15px; flex-direction: column; align-items: center;">
-                    <textarea id="custom-dict-input" placeholder="Type your custom words here, separated by spaces or commas..." style="width: 500px; height: 80px; background: rgba(0, 2, 5, 0.9); color: var(--term-green); border: 2px solid var(--term-cyan); font-family: 'VT323', monospace; font-size: 1.8rem; padding: 10px; outline: none; resize: none;"></textarea>
+            <div id="custom-dict-container" style="margin-top: 10px; margin-bottom: 10px; text-align: center;">
+                <button id="btn-toggle-dict" onclick="toggleCustomDict()" style="background: #112; color: var(--term-cyan); font-size: 1.2rem; padding: 5px 15px;">[ ENABLE CUSTOM DICTIONARY ]</button>
+                <div id="custom-dict-ui" style="display: none; margin-top: 10px; flex-direction: column; align-items: center;">
+                    <textarea id="custom-dict-input" placeholder="Type your custom words here, separated by spaces or commas..." style="width: 400px; height: 60px; background: rgba(0, 2, 5, 0.9); color: var(--term-green); border: 2px solid var(--term-cyan); font-family: 'VT323', monospace; font-size: 1.5rem; padding: 10px; outline: none; resize: none;"></textarea>
                 </div>
             </div>
 
@@ -250,20 +228,20 @@
         </div>
 
         <div id="leaderboard-screen" class="screen">
-            <h1 style="color: var(--term-orange); font-size: 5rem; margin-bottom: 15px;">GLOBAL UPLINK</h1>
-            <p style="color: var(--term-cyan); font-size: 2rem; margin-top: 0;">TOP SECTORS CLEARED</p>
+            <h1 style="color: var(--term-orange); font-size: 4rem; margin-bottom: 10px;">GLOBAL UPLINK</h1>
+            <p style="color: var(--term-cyan); font-size: 1.8rem; margin-top: 0;">TOP SECTORS CLEARED</p>
             <div class="leaderboard-container" id="leaderboard-list">
-                <div style="text-align: center; color: #fff; font-size: 2.5rem;">Fetching data...</div>
+                <div style="text-align: center; color: #fff; font-size: 2rem;">Fetching data...</div>
             </div>
             <button onclick="goToStartScreen()">[ RETURN TO MAIN MENU ]</button>
         </div>
 
         <div id="shop-screen" class="screen">
-            <h1 style="font-size: 4rem; color: #fff; margin-bottom: 10px;">TERMINAL UPLINK</h1>
+            <h1 style="font-size: 3rem; color: #fff; margin-bottom: 5px;">TERMINAL UPLINK</h1>
             <div id="story-text"></div>
             <div class="currency-display" id="shop-souls">BYTES: 0 <span id="shop-zephyrite" style="display:none;">ZEPHYRITE: 0</span></div>
             <div class="prestige-display" id="shop-prestige">DAMAGE MULTIPLIER: 1.0x</div>
-            <button id="btn-prestige" onclick="doPrestige()" style="display: none; background: var(--term-red); color: white; margin-bottom: 20px;">[ INITIATE PRESTIGE LOOP ]</button>
+            <button id="btn-prestige" onclick="doPrestige()" style="display: none; background: var(--term-red); color: white; margin-bottom: 15px;">[ INITIATE PRESTIGE LOOP ]</button>
             <div class="shop-grid">
                 <div class="upgrade-card tier-1"><h3>[ CAPACITY ]</h3><p>+Max Energy</p><span class="cost" id="cost-max-mana">COST: 150</span><button id="btn-up-mana" onclick="buyUpgrade('maxMana')">INSTALL</button></div>
                 <div class="upgrade-card tier-1"><h3>[ OVERCLOCK ]</h3><p>+Energy Regen</p><span class="cost" id="cost-regen">COST: 200</span><button id="btn-up-regen" onclick="buyUpgrade('regen')">INSTALL</button></div>
@@ -277,49 +255,25 @@
         </div>
 
         <div id="game-over-screen" class="screen">
-            <h1 style="color: var(--term-red); font-size: 8rem; text-shadow: 0 0 30px var(--term-red); margin-bottom: 10px;">FATAL ERROR</h1>
-            <p id="final-score" style="font-size: 3rem; color: #fff; text-align: center; line-height: 1.5;"></p>
+            <h1 style="color: var(--term-red); font-size: 6rem; text-shadow: 0 0 20px var(--term-red);">FATAL ERROR</h1>
+            <p id="final-score" style="font-size: 2.5rem; color: #fff; text-align: center; line-height: 1.5;"></p>
             
             <div id="name-input-box">
-                <span style="font-size: 2.5rem; color: var(--term-cyan);">NEW HIGH SCORE ENTRY</span><br>
+                <span style="font-size: 2rem; color: var(--term-cyan);">NEW HIGH SCORE ENTRY</span><br>
                 <input type="text" id="player-initials" maxlength="3" placeholder="AAA" autocomplete="off">
                 <button id="btn-submit-score" onclick="submitNewScore()" style="background: var(--term-orange);">[ UPLOAD DATA ]</button>
             </div>
 
-            <div style="margin-top: 30px; display: flex; gap: 20px;">
-                <button id="btn-reboot" onclick="resetGame()">[ REBOOT ]</button>
-                <button id="btn-share" onclick="shareRun()" style="background: var(--term-cyan); color: #000;">[ SHARE RESULTS ]</button>
+            <div>
+                <button id="btn-reboot" onclick="resetGame()" style="margin-top: 20px;">[ REBOOT ]</button>
+                <button id="btn-share" onclick="shareRun()" style="margin-top: 20px; background: var(--term-cyan); color: #000;">[ SHARE RESULTS ]</button>
             </div>
         </div>
     </div>
+    
+    <div class="mana-bar-container"><div id="mana-bar"></div><div id="mana-text">100 / 100</div></div>
 
     <script>
-        // Game Logic rendering resolution
-        const canvas = document.getElementById('gameCanvas'); 
-        const ctx = canvas.getContext('2d');
-        canvas.width = 1280;
-        canvas.height = 720;
-
-        function resizeCanvas() {
-            const targetRatio = 1280 / 720;
-            let w = window.innerWidth;
-            let h = window.innerHeight - 85; 
-            let windowRatio = w / h;
-            
-            if (windowRatio > targetRatio) {
-                w = h * targetRatio; 
-            } else {
-                h = w / targetRatio; 
-            }
-            
-            canvas.style.width = w + 'px';
-            canvas.style.height = h + 'px';
-            canvas.style.left = ((window.innerWidth - w) / 2) + 'px';
-            canvas.style.top = ((window.innerHeight - 85 - h) / 2) + 'px';
-        }
-        
-        window.addEventListener('resize', resizeCanvas);
-        resizeCanvas();
         window.addEventListener('scroll', () => { window.scrollTo(0, 0); });
         
         function toggleFullscreen() {
@@ -330,6 +284,8 @@
             }
         }
 
+        const canvas = document.getElementById('gameCanvas'); 
+        const ctx = canvas.getContext('2d');
         const cmdInput = document.getElementById('cmd-input'); 
         const gameContainer = document.getElementById('game-container');
         const terminalBox = document.getElementById('terminal-box'); 
@@ -361,7 +317,6 @@
         const sndBossHit = () => { playTone(200, 'triangle', 0.3, 0.05); };
         const sndPulse = () => playTone(150, 'sine', 0.4, 0.05);
 
-        // Core Game Variables
         let playerStats = { maxMana: 100, manaRegen: 0.2, smiteCost: 20, smiteDmg: 1, souls: 0, zephyrite: 0, faith: 100, autoAtk: 0, autoHack: 0, smiteSplash: false };
         let upgradeCosts = { maxMana: 150, regen: 200, dmg: 250, heal: 100, auto: 300, hack: 500, splash: 800 };
         
@@ -373,16 +328,13 @@
         let gameState = 'START'; 
         let currentMana = playerStats.maxMana;
         let wave = 0, enemiesToSpawn = 0, spawnTimer = 0, shakeFrames = 0, frameCount = 0;
-        
-        // Entity Arrays
-        let enemies = [], scorchMarks = [], lightnings = [], autoLasers = [], particles = [], floatingTexts = [], bgStars = []; 
-        let autoNodes = []; let buildings = []; let letterProjectiles = [];
-        
-        let damageFlash = 0; let glitchInterval = null; 
+        let enemies = [], scorchMarks = [], lightnings = [], autoLasers = [], particles = [], floatingTexts = [];
+        let bgStars = []; 
+        let damageFlash = 0; let autoNodes = []; let glitchInterval = null; 
         let empTimer = 0; let activeBoss = null; let iFrames = 0;
         let dreadnoughtLaserY = -1; let dreadnoughtCharge = 0;
         
-        let placementMode = null; const maxBuildings = 20;
+        let buildings = []; let placementMode = null; const maxBuildings = 20;
         let pulseUnlocked = false;
         
         let currentFinalScore = 0; 
@@ -392,6 +344,7 @@
         let targetLock = null;
         let lockString = "";
         let combo = 0;
+        let letterProjectiles = [];
 
         // Anomaly System
         let currentAnomaly = { name: "NONE", desc: "SYSTEM STABLE", color: "var(--term-cyan)" };
@@ -403,7 +356,7 @@
         ];
 
         // ==========================================
-        // DYNAMIC DICTIONARIES
+        // DYNAMIC DICTIONARIES (SCALING DIFFICULTY)
         // ==========================================
         const shortWords = ["data", "wire", "core", "byte", "chip", "node", "link", "port", "disk", "ping", "boot", "host", "user", "file", "path", "code", "lock", "key", "scan", "task", "grid", "wave", "sync", "hash", "salt", "bug", "ram", "cpu", "gpu", "bit", "hex", "lan", "wan", "mac", "ip", "bot", "hub", "log", "net", "web", "ssl", "tcp", "udp", "tag", "api", "gui", "cli", "dev", "ops", "sdk"];
         const mediumWords = ["network", "system", "memory", "access", "router", "server", "switch", "domain", "packet", "socket", "proxy", "admin", "token", "cloud", "cache", "cipher", "client", "daemon", "dongle", "duplex", "export", "filter", "folder", "hacker", "kernel", "legacy", "matrix", "module", "object", "offline", "online", "output", "plugin", "reboot", "script", "sector", "source", "subnet", "syntax", "thread", "update", "upload", "uptime", "vector", "widget", "window", "botnet", "buffer", "cookie", "crypto"];
@@ -452,11 +405,12 @@
         let highScore = localStorage.getItem('sysPurgeHighScore') || 0;
         if (highScore > 0) document.getElementById('personal-best').textContent = `BEST SECTOR REACHED: ${highScore}`;
 
-        initStars();
-
+        // ==========================================
+        // SHARE RESULTS FEATURE
+        // ==========================================
         function shareRun() {
             let anomalyText = currentAnomaly.name !== "NONE" ? ` | 🎲 ${currentAnomaly.name}` : "";
-            let text = `System_Purge.exe [v4.4]\nSector Reached: ${currentFinalScore}${anomalyText}\nScore: ${playerStats.souls} BYTES\n\nCan you beat my system record? 💾🔥⚡️`;
+            let text = `System_Purge.exe [v4.0]\nSector Reached: ${currentFinalScore}${anomalyText}\nScore: ${playerStats.souls} BYTES\n\nCan you beat my system record? 💾🔥⚡️`;
             
             navigator.clipboard.writeText(text).then(() => {
                 let btn = document.getElementById('btn-share');
@@ -467,6 +421,9 @@
             });
         }
 
+        // ==========================================
+        // DREAMLO GLOBAL LEADERBOARD API 
+        // ==========================================
         const DREAMLO_PUBLIC_CODE = "69e11f208f40bb10681d516e";
         const DREAMLO_PRIVATE_CODE = "p_mnuGlM_kiGiA7AnsWj_gmuv1v4x3tkilZ7OQO02giQ"; 
 
@@ -519,514 +476,108 @@
                 showLeaderboardScreen();
             });
         }
-
         // ==========================================
-        // PERFECT MOUSE CLICK MATH & TOUCH ENGINE
-        // This solves the '1 getting stuck' and 'enemy not dying' bug by 
-        // completely bypassing the mobile keyboard 'dismiss swallow' behavior
-        // ==========================================
-        function handleInteract(e) {
-            initAudio(); 
-            if (gameState !== 'PLAYING') return;
-            
-            let clientX, clientY;
-            if (e.touches && e.touches.length > 0) {
-                clientX = e.touches[0].clientX;
-                clientY = e.touches[0].clientY;
-            } else {
-                clientX = e.clientX;
-                clientY = e.clientY;
-            }
-
-            if (clientX === undefined || clientY === undefined) return;
-            
-            const rect = canvas.getBoundingClientRect(); 
-            const canvasRatio = canvas.width / canvas.height;
-            const rectRatio = rect.width / rect.height;
-            
-            let renderWidth, renderHeight, offsetX = 0, offsetY = 0;
-            
-            if (rectRatio > canvasRatio) {
-                renderHeight = rect.height;
-                renderWidth = renderHeight * canvasRatio;
-                offsetX = (rect.width - renderWidth) / 2;
-            } else {
-                renderWidth = rect.width;
-                renderHeight = renderWidth / canvasRatio;
-                offsetY = (rect.height - renderHeight) / 2;
-            }
-            
-            const scaleX = canvas.width / renderWidth;
-            const scaleY = canvas.height / renderHeight;
-            
-            const clickX = (clientX - rect.left - offsetX) * scaleX; 
-            const clickY = (clientY - rect.top - offsetY) * scaleY;
-
-            if (clickX < 0 || clickX > canvas.width || clickY < 0 || clickY > canvas.height) {
-                if (placementMode) togglePlacement(placementMode);
-                if (focusMode) {
-                    targetLock = null; lockString = ""; cmdInput.value = ""; combo = 0;
-                    focusMode = false; gameContainer.classList.remove('focus-mode');
-                }
-                return;
-            }
-
-            if (focusMode) {
-                targetLock = null; lockString = ""; cmdInput.value = ""; combo = 0;
-                focusMode = false; gameContainer.classList.remove('focus-mode');
-                addFloatingText(clickX, clickY, "LOCK CLEARED", "#00f3ff");
-                sndError();
-                return;
-            }
-
-            if (placementMode) {
-                let costBytes = 0; let costZeph = 0;
-                if (placementMode === 'sentry') costBytes = Math.floor(60 * Math.pow(1.2, buildings.filter(b=>b.type==='sentry').length));
-                if (placementMode === 'firewall') costBytes = 40;
-                if (placementMode === 'mine') costBytes = 30;
-                if (placementMode === 'pulse') costBytes = 120;
-                if (placementMode === 'zephyr_sentry') costZeph = 50;
-                if (placementMode === 'plasma_mortar') costZeph = 100;
-
-                if (buildings.length >= maxBuildings) {
-                    addFloatingText(clickX, clickY, "CAPACITY REACHED", "#ff003c"); sndError(); togglePlacement(placementMode);
-                } else if (costBytes > 0 && currentMana >= costBytes) {
-                    currentMana -= costBytes; addBuilding(placementMode, clickX, clickY); togglePlacement(placementMode);
-                } else if (costZeph > 0 && playerStats.zephyrite >= costZeph) {
-                    playerStats.zephyrite -= costZeph; addBuilding(placementMode, clickX, clickY); togglePlacement(placementMode);
-                } else {
-                    addFloatingText(clickX, clickY, costZeph > 0 ? "INSUFFICIENT ZEPH" : "INSUFFICIENT ENG", "#ff003c"); sndError(); togglePlacement(placementMode);
-                }
-                return; 
-            }
-
-            let clickedBuilding = null;
-            for(let i=0; i<buildings.length; i++) {
-                let b = buildings[i];
-                if (b.type === 'sentry' && Math.hypot(b.x - clickX, b.y - clickY) < b.size * 1.5) { clickedBuilding = b; break; }
-                if (b.type === 'firewall' && Math.abs(b.x - clickX) < b.width && Math.abs(b.y - clickY) < b.height) { clickedBuilding = b; break; }
-            }
-
-            if (clickedBuilding && clickedBuilding.type === 'sentry') {
-                if (clickedBuilding.encrypted) { addFloatingText(clickX, clickY, "ENCRYPTED - TYPE TO UNLOCK", "#ff003c"); sndError(); return; }
-                let upgCost = clickedBuilding.level === 1 ? 100 : (clickedBuilding.level === 2 ? 250 : (clickedBuilding.level === 3 ? 500 : (clickedBuilding.level === 4 ? 800 : -1)));
-                if (upgCost !== -1 && currentMana >= upgCost) {
-                    currentMana -= upgCost; clickedBuilding.level++; clickedBuilding.maxHp += 20; clickedBuilding.hp = clickedBuilding.maxHp; clickedBuilding.territory += 40;
-                    if (clickedBuilding.level === 5) {
-                        addFloatingText(clickX, clickY, `OMEGA SENTRY`, "#ff003c"); createExplosion(clickX, clickY, "#ff003c", 40); sndPulse();
-                    } else {
-                        addFloatingText(clickX, clickY, `LVL ${clickedBuilding.level} UPGRADE`, "#39ff14"); createExplosion(clickX, clickY, "#00f3ff", 20); sndPing();
-                    }
-                } else if (upgCost === -1) { addFloatingText(clickX, clickY, "MAX LEVEL", "#00f3ff"); sndError();
-                } else { addFloatingText(clickX, clickY, `NEED ${upgCost} ENG`, "#ff003c"); sndError(); }
-                return; 
-            }
-
-            if (currentMana < playerStats.smiteCost) {
-                document.getElementById('mana-bar').style.background = "#ff003c"; sndError(); setTimeout(() => document.getElementById('mana-bar').style.background = "var(--term-cyan)", 150); return;
-            }
-
-            let pwr = playerStats.smiteDmg; 
-            if (currentAnomaly.name === "LUCKY_STRIKE") pwr *= 3;
-
-            currentMana -= playerStats.smiteCost; 
-            shakeFrames = 3 + (pwr * 2); 
-            lightnings.push({ x: clickX, y: clickY, life: 10 + (pwr*5), thickness: pwr }); 
-            scorchMarks.push({ x: clickX, y: clickY, life: 60 + (pwr*20), size: pwr });
-            createExplosion(clickX, clickY, "#00f3ff", 10 + (pwr*5)); sndExplode();
-            
-            let smiteRadius = playerStats.smiteSplash ? 100 : (60 + (pwr*5));
-
-            for (let i = enemies.length - 1; i >= 0; i--) {
-                const enemy = enemies[i];
-                if (Math.hypot(enemy.x - clickX, enemy.y - clickY) < smiteRadius + enemy.size) {
-                    if (enemy.shielded) { addFloatingText(enemy.x, enemy.y, "ENCRYPTED", "#ff003c"); createExplosion(enemy.x, enemy.y, "#ff003c", 10); continue; }
-                    if (enemy.type === 'phantom' && enemy.alpha < 0.5) continue; 
-
-                    enemy.hp -= (pwr * prestigeMult); 
-                    
-                    if (enemy.hp <= 0) {
-                        createExplosion(enemy.x, enemy.y, enemy.color, 50); 
-                        if (enemy.type === 'boss') {
-                            playerStats.souls += 1000; playerStats.faith = 100;
-                            if (wave > 10) { playerStats.zephyrite += 200; addFloatingText(enemy.x, enemy.y + 20, "+200 ZEPH", "var(--term-zephyr)"); }
-                            addFloatingText(enemy.x, enemy.y, "BOSS DEFEATED: +1000 BYTES", "#39ff14"); addFloatingText(canvas.width/2, canvas.height/2, "SYSTEM FULLY RESTORED", "#39ff14");
-                            shakeFrames = 30; damageFlash = 0.8; activeBoss = null; bossOverlay.style.opacity = '0';
-                        } else {
-                            playerStats.souls += enemy.maxHp * 15; addFloatingText(enemy.x, enemy.y, `+${enemy.maxHp * 15}`, "#fff");
-                            if (wave > 10) {
-                                let zDrop = Math.ceil(enemy.maxHp * 2); playerStats.zephyrite += zDrop;
-                                addFloatingText(enemy.x, enemy.y + 15, `+${zDrop}Z`, "var(--term-zephyr)");
-                            }
-                        }
-                        enemies.splice(i, 1);
-                    } else {
-                        createExplosion(enemy.x, enemy.y, "#fff", 10); addFloatingText(enemy.x, enemy.y, `HIT`, "#fff");
-                        if(enemy.type === 'boss') sndBossHit();
-                    }
-                }
-            }
-        }
-
-// ==========================================
-        // 1. PERFECT MOUSE & TOUCH CONTROLS
-        // ==========================================
-        function processClick(clientX, clientY) {
-            initAudio(); 
-            if (gameState !== 'PLAYING') return;
-            
-            const rect = canvas.getBoundingClientRect(); 
-            const canvasRatio = canvas.width / canvas.height;
-            const rectRatio = rect.width / rect.height;
-            
-            let renderWidth, renderHeight, offsetX = 0, offsetY = 0;
-            
-            if (rectRatio > canvasRatio) {
-                renderHeight = rect.height;
-                renderWidth = renderHeight * canvasRatio;
-                offsetX = (rect.width - renderWidth) / 2;
-            } else {
-                renderWidth = rect.width;
-                renderHeight = renderWidth / canvasRatio;
-                offsetY = (rect.height - renderHeight) / 2;
-            }
-            
-            const scaleX = canvas.width / renderWidth;
-            const scaleY = canvas.height / renderHeight;
-            
-            const clickX = (clientX - rect.left - offsetX) * scaleX; 
-            const clickY = (clientY - rect.top - offsetY) * scaleY;
-
-            // Stop click if hitting the black borders out of bounds
-            if (clickX < 0 || clickX > canvas.width || clickY < 0 || clickY > canvas.height) {
-                if (placementMode) togglePlacement(placementMode);
-                if (focusMode) {
-                    targetLock = null; lockString = ""; cmdInput.value = ""; combo = 0;
-                    focusMode = false; gameContainer.classList.remove('focus-mode');
-                }
-                return;
-            }
-
-            // Click anywhere else to cancel a target lock
-            if (focusMode) {
-                targetLock = null; lockString = ""; cmdInput.value = ""; combo = 0; sndError();
-                focusMode = false; gameContainer.classList.remove('focus-mode');
-                addFloatingText(clickX, clickY, "LOCK CLEARED", "#00f3ff");
-                return;
-            }
-
-            if (placementMode) {
-                let costBytes = 0; let costZeph = 0;
-                if (placementMode === 'sentry') costBytes = Math.floor(60 * Math.pow(1.2, buildings.filter(b=>b.type==='sentry').length));
-                if (placementMode === 'firewall') costBytes = 40;
-                if (placementMode === 'mine') costBytes = 30;
-                if (placementMode === 'pulse') costBytes = 120;
-                if (placementMode === 'zephyr_sentry') costZeph = 50;
-                if (placementMode === 'plasma_mortar') costZeph = 100;
-
-                if (buildings.length >= maxBuildings) {
-                    addFloatingText(clickX, clickY, "CAPACITY REACHED", "#ff003c"); sndError(); togglePlacement(placementMode);
-                } else if (costBytes > 0 && currentMana >= costBytes) {
-                    currentMana -= costBytes; addBuilding(placementMode, clickX, clickY); togglePlacement(placementMode);
-                } else if (costZeph > 0 && playerStats.zephyrite >= costZeph) {
-                    playerStats.zephyrite -= costZeph; addBuilding(placementMode, clickX, clickY); togglePlacement(placementMode);
-                } else {
-                    addFloatingText(clickX, clickY, costZeph > 0 ? "INSUFFICIENT ZEPH" : "INSUFFICIENT ENG", "#ff003c"); sndError(); togglePlacement(placementMode);
-                }
-                return; 
-            }
-
-            let clickedBuilding = null;
-            for(let i=0; i<buildings.length; i++) {
-                let b = buildings[i];
-                if (b.type === 'sentry' && Math.hypot(b.x - clickX, b.y - clickY) < b.size * 1.5) { clickedBuilding = b; break; }
-                if (b.type === 'firewall' && Math.abs(b.x - clickX) < b.width && Math.abs(b.y - clickY) < b.height) { clickedBuilding = b; break; }
-            }
-
-            if (clickedBuilding && clickedBuilding.type === 'sentry') {
-                if (clickedBuilding.encrypted) { addFloatingText(clickX, clickY, "ENCRYPTED - TYPE TO UNLOCK", "#ff003c"); sndError(); return; }
-                let upgCost = clickedBuilding.level === 1 ? 100 : (clickedBuilding.level === 2 ? 250 : (clickedBuilding.level === 3 ? 500 : (clickedBuilding.level === 4 ? 800 : -1)));
-                if (upgCost !== -1 && currentMana >= upgCost) {
-                    currentMana -= upgCost; clickedBuilding.level++; clickedBuilding.maxHp += 20; clickedBuilding.hp = clickedBuilding.maxHp; clickedBuilding.territory += 40;
-                    if (clickedBuilding.level === 5) {
-                        addFloatingText(clickX, clickY, `OMEGA SENTRY`, "#ff003c"); createExplosion(clickX, clickY, "#ff003c", 40); sndPulse();
-                    } else {
-                        addFloatingText(clickX, clickY, `LVL ${clickedBuilding.level} UPGRADE`, "#39ff14"); createExplosion(clickX, clickY, "#00f3ff", 20); sndPing();
-                    }
-                } else if (upgCost === -1) { addFloatingText(clickX, clickY, "MAX LEVEL", "#00f3ff"); sndError();
-                } else { addFloatingText(clickX, clickY, `NEED ${upgCost} ENG`, "#ff003c"); sndError(); }
-                return; 
-            }
-
-            if (currentMana < playerStats.smiteCost) {
-                document.getElementById('mana-bar').style.background = "#ff003c"; sndError(); setTimeout(() => document.getElementById('mana-bar').style.background = "var(--term-cyan)", 150); return;
-            }
-
-            let pwr = playerStats.smiteDmg; 
-            if (currentAnomaly.name === "LUCKY_STRIKE") pwr *= 3;
-
-            currentMana -= playerStats.smiteCost; 
-            shakeFrames = 3 + (pwr * 2); 
-            lightnings.push({ x: clickX, y: clickY, life: 10 + (pwr*5), thickness: pwr }); 
-            scorchMarks.push({ x: clickX, y: clickY, life: 60 + (pwr*20), size: pwr });
-            createExplosion(clickX, clickY, "#00f3ff", 10 + (pwr*5)); sndExplode();
-            
-            let smiteRadius = playerStats.smiteSplash ? 100 : (60 + (pwr*5));
-
-            for (let i = enemies.length - 1; i >= 0; i--) {
-                const enemy = enemies[i];
-                if (Math.hypot(enemy.x - clickX, enemy.y - clickY) < smiteRadius + enemy.size) {
-                    if (enemy.shielded) { addFloatingText(enemy.x, enemy.y, "ENCRYPTED", "#ff003c"); createExplosion(enemy.x, enemy.y, "#ff003c", 10); continue; }
-                    if (enemy.type === 'phantom' && enemy.alpha < 0.5) continue; 
-
-                    enemy.hp -= (pwr * prestigeMult); 
-                    
-                    if (enemy.hp <= 0) {
-                        createExplosion(enemy.x, enemy.y, enemy.color, 50); 
-                        if (enemy.type === 'boss') {
-                            playerStats.souls += 1000; playerStats.faith = 100;
-                            if (wave > 10) { playerStats.zephyrite += 200; addFloatingText(enemy.x, enemy.y + 20, "+200 ZEPH", "var(--term-zephyr)"); }
-                            addFloatingText(enemy.x, enemy.y, "BOSS DEFEATED: +1000 BYTES", "#39ff14"); addFloatingText(canvas.width/2, canvas.height/2, "SYSTEM FULLY RESTORED", "#39ff14");
-                            shakeFrames = 30; damageFlash = 0.8; activeBoss = null; bossOverlay.style.opacity = '0';
-                        } else {
-                            playerStats.souls += enemy.maxHp * 15; addFloatingText(enemy.x, enemy.y, `+${enemy.maxHp * 15}`, "#fff");
-                            if (wave > 10) {
-                                let zDrop = Math.ceil(enemy.maxHp * 2); playerStats.zephyrite += zDrop;
-                                addFloatingText(enemy.x, enemy.y + 15, `+${zDrop}Z`, "var(--term-zephyr)");
-                            }
-                        }
-                        enemies.splice(i, 1);
-                    } else {
-                        createExplosion(enemy.x, enemy.y, "#fff", 10); addFloatingText(enemy.x, enemy.y, `HIT`, "#fff");
-                        if(enemy.type === 'boss') sndBossHit();
-                    }
-                }
-            }
-        }
-
-        // Attach safely to mouse and touch!
-        canvas.addEventListener('mousedown', (e) => processClick(e.clientX, e.clientY));
-        canvas.addEventListener('touchstart', (e) => {
-            e.preventDefault(); 
-            if(e.touches.length > 0) processClick(e.touches[0].clientX, e.touches[0].clientY);
-        }, { passive: false });
 
         document.querySelector('.game-wrapper').addEventListener('click', (e) => { 
             initAudio(); 
-            if (e.target.tagName !== 'TEXTAREA' && e.target.tagName !== 'INPUT' && e.target.tagName !== 'BUTTON' && !e.target.closest('button') && !e.target.closest('.building-option')) {
+            // Fix input stealing focus from the custom dictionary textarea
+            if (e.target.tagName !== 'TEXTAREA' && e.target.tagName !== 'INPUT') {
                 cmdInput.focus(); 
             }
         });
 
         // ==========================================
-        // 2. HOTKEYS & TYPING ENGINE
+        // Z-TYPE INPUT ENGINE
         // ==========================================
-        window.addEventListener('keydown', (e) => {
-            if (gameState === 'PLAYING' && !targetLock) {
-                if (['1','2','3','4','5','6'].includes(e.key)) {
-                    e.preventDefault(); 
-                    if (e.key === '1') togglePlacement('sentry');
-                    if (e.key === '2') togglePlacement('firewall');
-                    if (e.key === '3') togglePlacement('mine');
-                    if (e.key === '4' && pulseUnlocked) togglePlacement('pulse');
-                    if (e.key === '5' && zephyrUnlocked) togglePlacement('zephyr_sentry');
-                    if (e.key === '6' && zephyrUnlocked) togglePlacement('plasma_mortar');
-                }
-            }
-            if ((e.key === 'Escape' || e.key === 'Backspace') && targetLock) {
-                targetLock = null; lockString = ""; cmdInput.value = ""; combo = 0; sndError();
-                focusMode = false; gameContainer.classList.remove('focus-mode');
-            }
-        });
-
         cmdInput.addEventListener('input', (e) => {
             initAudio();
-            if (gameState !== 'PLAYING' && gameState !== 'START') {
-                cmdInput.value = "";
-                return;
-            }
+            if (gameState !== 'PLAYING' && gameState !== 'START') return;
             if (useCustomWords && document.activeElement.id === 'custom-dict-input') return;
 
-            let val = cmdInput.value.toLowerCase().replace(/\s/g, ''); 
+            let val = cmdInput.value.toLowerCase();
 
+            // Handle Backspace (Clear lock and break combo)
             if (val.length < lockString.length) {
                 targetLock = null; lockString = ""; cmdInput.value = ""; combo = 0; sndError();
                 focusMode = false; gameContainer.classList.remove('focus-mode');
                 return;
             }
 
-            let newChars = val.slice(lockString.length);
-            let validSoFar = true;
-            
-            for (let i = 0; i < newChars.length; i++) {
-                let key = newChars[i];
+            let key = val.slice(-1);
 
-                if (!targetLock) {
-                    let potentialTargets = [];
-                    if (gameState === 'START') {
-                        potentialTargets.push({type: 'boot', word: 'sys.boot'});
-                    } else if (gameState === 'PLAYING') {
-                        enemies.forEach(en => { if(en.shielded) potentialTargets.push({type: 'enemy', ref: en, word: en.word}); });
-                        buildings.forEach(b => { if(b.encrypted) potentialTargets.push({type: 'building', ref: b, word: b.word}); });
-                        potentialTargets.push({type: 'command', word: 'repair'});
-                        potentialTargets.push({type: 'command', word: 'overclock'});
-                        potentialTargets.push({type: 'command', word: 'purge'});
-                        
-                        potentialTargets.sort((a, b) => {
-                            let ax = a.type === 'enemy' ? a.ref.x : (a.type === 'building' ? a.ref.x : -999);
-                            let bx = b.type === 'enemy' ? b.ref.x : (b.type === 'building' ? b.ref.x : -999);
-                            return bx - ax; 
-                        });
-                    }
-
-                    let found = potentialTargets.find(t => t.word.startsWith(key));
-                    if (found) {
-                        targetLock = found; lockString = key; combo++; sndType();
-                        focusMode = true; 
-                        if (gameState === 'PLAYING') { gameContainer.classList.add('focus-mode'); placementMode = null; updatePlacementUI(); }
-                        shootLetterProjectile(key, targetLock);
-                        
-                        if (lockString === targetLock.word) {
-                            executeLock(targetLock);
-                            targetLock = null; lockString = ""; focusMode = false; gameContainer.classList.remove('focus-mode');
-                            cmdInput.value = ""; 
-                            validSoFar = false;
-                            break; 
-                        }
-                    } else {
-                        combo = 0; sndError();
-                        if (gameState === 'PLAYING') { shakeFrames = 3; document.getElementById('cmd-input').style.background = "rgba(255,0,60,0.3)"; setTimeout(() => document.getElementById('cmd-input').style.background = "transparent", 150); }
-                        targetLock = null; lockString = ""; cmdInput.value = ""; focusMode = false; gameContainer.classList.remove('focus-mode');
-                        validSoFar = false;
-                        break; 
-                    }
-                } else {
-                    let expectedKey = targetLock.word.charAt(lockString.length);
-                    if (key === expectedKey) {
-                        lockString += key; combo++; sndType();
-                        shootLetterProjectile(key, targetLock);
-                        
-                        if (lockString === targetLock.word) {
-                            executeLock(targetLock);
-                            targetLock = null; lockString = ""; focusMode = false; gameContainer.classList.remove('focus-mode');
-                            cmdInput.value = ""; 
-                            validSoFar = false;
-                            break; 
-                        }
-                    } else {
-                        combo = 0; sndError();
-                        if (gameState === 'PLAYING') { shakeFrames = 3; document.getElementById('cmd-input').style.background = "rgba(255,0,60,0.3)"; setTimeout(() => document.getElementById('cmd-input').style.background = "transparent", 150); }
-                        targetLock = null; lockString = ""; cmdInput.value = ""; focusMode = false; gameContainer.classList.remove('focus-mode');
-                        validSoFar = false;
-                        break; 
-                    }
-                }
-            }
-            if (validSoFar) cmdInput.value = lockString;
-        });
-
-        // ==========================================
-        // Z-TYPE INPUT ENGINE
-        // Completely refactored to support predictive text, copy/paste, and autocorrect bugginess
-        // ==========================================
- cmdInput.addEventListener('input', (e) => {
-            initAudio();
-            if (gameState !== 'PLAYING' && gameState !== 'START') {
-                cmdInput.value = "";
-                return;
-            }
-            if (useCustomWords && document.activeElement.id === 'custom-dict-input') return;
-
-            // FIX: Trim prevents mobile spacebar from breaking words!
-            let val = cmdInput.value.toLowerCase().trim();
-
-            if (val.length < lockString.length) {
-                targetLock = null; lockString = ""; cmdInput.value = ""; combo = 0; sndError();
-                focusMode = false; gameContainer.classList.remove('focus-mode');
+            // Handle pure hotkeys during gameplay when not locked
+            if (gameState === 'PLAYING' && !targetLock && ['1','2','3','4','5','6'].includes(key)) {
+                if (key === '1') togglePlacement('sentry');
+                if (key === '2') togglePlacement('firewall');
+                if (key === '3') togglePlacement('mine');
+                if (key === '4' && pulseUnlocked) togglePlacement('pulse');
+                if (key === '5' && zephyrUnlocked) togglePlacement('zephyr_sentry');
+                if (key === '6' && zephyrUnlocked) togglePlacement('plasma_mortar');
+                cmdInput.value = ""; 
                 return;
             }
 
-            let newChars = val.slice(lockString.length);
-            
-            for (let i = 0; i < newChars.length; i++) {
-                let key = newChars[i];
+            // Gather all available targets to lock onto
+            let potentialTargets = [];
+            if (gameState === 'START') {
+                potentialTargets.push({type: 'boot', word: 'sys.boot'});
+            } else if (gameState === 'PLAYING') {
+                enemies.forEach(en => { if(en.shielded) potentialTargets.push({type: 'enemy', ref: en, word: en.word}); });
+                buildings.forEach(b => { if(b.encrypted) potentialTargets.push({type: 'building', ref: b, word: b.word}); });
+                potentialTargets.push({type: 'command', word: 'repair'});
+                potentialTargets.push({type: 'command', word: 'overclock'});
+                potentialTargets.push({type: 'command', word: 'purge'});
+                
+                // Sort by closeness to base (higher X is closer)
+                potentialTargets.sort((a, b) => {
+                    let ax = a.type === 'enemy' ? a.ref.x : (a.type === 'building' ? a.ref.x : -999);
+                    let bx = b.type === 'enemy' ? b.ref.x : (b.type === 'building' ? b.ref.x : -999);
+                    return bx - ax; 
+                });
+            }
 
-                if (!targetLock) {
-                    let potentialTargets = [];
-                    if (gameState === 'START') {
-                        potentialTargets.push({type: 'boot', word: 'sys.boot'});
-                    } else if (gameState === 'PLAYING') {
-                        enemies.forEach(en => { if(en.shielded) potentialTargets.push({type: 'enemy', ref: en, word: en.word}); });
-                        buildings.forEach(b => { if(b.encrypted) potentialTargets.push({type: 'building', ref: b, word: b.word}); });
-                        potentialTargets.push({type: 'command', word: 'repair'});
-                        potentialTargets.push({type: 'command', word: 'overclock'});
-                        potentialTargets.push({type: 'command', word: 'purge'});
-                        
-                        potentialTargets.sort((a, b) => {
-                            let ax = a.type === 'enemy' ? a.ref.x : (a.type === 'building' ? a.ref.x : -999);
-                            let bx = b.type === 'enemy' ? b.ref.x : (b.type === 'building' ? b.ref.x : -999);
-                            return bx - ax; 
-                        });
-                    }
-
-                    let found = potentialTargets.find(t => t.word.startsWith(key));
-                    if (found) {
-                        targetLock = found; lockString = key; combo++; sndType();
-                        focusMode = true; 
-                        if (gameState === 'PLAYING') { gameContainer.classList.add('focus-mode'); placementMode = null; updatePlacementUI(); }
-                        shootLetterProjectile(key, targetLock);
-                        
-                        if (lockString === targetLock.word) {
-                            executeLock(targetLock);
-                            targetLock = null; lockString = ""; focusMode = false; gameContainer.classList.remove('focus-mode');
-                            cmdInput.value = "";
-                            return; // FIX: Safely break out when word is finished
-                        }
-                    } else {
-                        combo = 0; sndError();
-                        targetLock = null; lockString = ""; cmdInput.value = ""; focusMode = false; gameContainer.classList.remove('focus-mode');
-                        if (gameState === 'PLAYING') { shakeFrames = 3; document.getElementById('cmd-input').style.background = "rgba(255,0,60,0.3)"; setTimeout(() => document.getElementById('cmd-input').style.background = "transparent", 150); }
-                        return; // FIX: Safely break out on typo
+            if (!targetLock) {
+                let found = potentialTargets.find(t => t.word.startsWith(key));
+                if (found) {
+                    targetLock = found; lockString = key; combo++; sndType();
+                    focusMode = true; 
+                    if (gameState === 'PLAYING') { gameContainer.classList.add('focus-mode'); placementMode = null; updatePlacementUI(); }
+                    shootLetterProjectile(key, targetLock);
+                } else {
+                    combo = 0; sndError();
+                    if (gameState === 'PLAYING') { shakeFrames = 3; document.getElementById('cmd-input').style.background = "rgba(255,0,60,0.3)"; setTimeout(() => document.getElementById('cmd-input').style.background = "transparent", 150); }
+                }
+            } else {
+                let expectedKey = targetLock.word.charAt(lockString.length);
+                if (key === expectedKey) {
+                    lockString += key; combo++; sndType();
+                    shootLetterProjectile(key, targetLock);
+                    
+                    if (lockString === targetLock.word) {
+                        executeLock(targetLock);
+                        targetLock = null; lockString = ""; focusMode = false; gameContainer.classList.remove('focus-mode');
                     }
                 } else {
-                    let expectedKey = targetLock.word.charAt(lockString.length);
-                    if (key === expectedKey) {
-                        lockString += key; combo++; sndType();
-                        shootLetterProjectile(key, targetLock);
-                        
-                        if (lockString === targetLock.word) {
-                            executeLock(targetLock);
-                            targetLock = null; lockString = ""; focusMode = false; gameContainer.classList.remove('focus-mode');
-                            cmdInput.value = "";
-                            return; // FIX: Safely break out when word is finished
-                        }
-                    } else {
-                        combo = 0; sndError();
-                        targetLock = null; lockString = ""; cmdInput.value = ""; focusMode = false; gameContainer.classList.remove('focus-mode');
-                        if (gameState === 'PLAYING') { shakeFrames = 3; document.getElementById('cmd-input').style.background = "rgba(255,0,60,0.3)"; setTimeout(() => document.getElementById('cmd-input').style.background = "transparent", 150); }
-                        return; // FIX: Safely break out on typo
-                    }
+                    combo = 0; sndError();
+                    if (gameState === 'PLAYING') { shakeFrames = 3; document.getElementById('cmd-input').style.background = "rgba(255,0,60,0.3)"; setTimeout(() => document.getElementById('cmd-input').style.background = "transparent", 150); }
                 }
             }
             
+            // Force the physical input to only show successfully typed locked chars
             cmdInput.value = lockString;
-        });
-            
-            // Only update input UI value if we didn't just clear it by breaking out of an error or success state
-            if (validSoFar) cmdInput.value = lockString;
         });
 
         function shootLetterProjectile(key, target) {
-            if (gameState !== 'PLAYING') return; 
+            if (gameState !== 'PLAYING') return; // Don't animate on the start screen
             
             let startX = canvas.width / 2;
-            let startY = canvas.height; 
+            let startY = canvas.height - 60; // Bottom center
             
             let tx = canvas.width / 2;
             let ty = canvas.height / 2;
             
-            if (target.type === 'enemy') { tx = target.ref.x; ty = target.ref.y - target.ref.size - 10; }
-            else if (target.type === 'building') { tx = target.ref.x; ty = target.ref.y - 30; }
+            if (target.type === 'enemy') { tx = target.ref.x; ty = target.ref.y; }
+            else if (target.type === 'building') { tx = target.ref.x; ty = target.ref.y; }
             
             letterProjectiles.push({
                 char: key.toUpperCase(),
@@ -1034,7 +585,7 @@
                 y: startY,
                 tx: tx,
                 ty: ty,
-                speed: 25 
+                speed: 35 // Very fast laser speed
             });
         }
 
@@ -1044,11 +595,10 @@
                 let bootLog = document.getElementById('boot-log');
                 bootLog.innerHTML += `<br><br><span class="log-cmd">C:\\> sys.boot</span>`;
                 sndPing();
-                cmdInput.disabled = true;
                 setTimeout(() => { bootLog.innerHTML += `<br><span class="log-sys">[SYS]: CORE AWAKENED...</span>`; sndType(); }, 400);
                 setTimeout(() => { bootLog.innerHTML += `<br>> MOUNTING VIRTUAL DRIVES... [OK]`; sndType(); }, 800);
                 setTimeout(() => { bootLog.innerHTML += `<br>> LOADING SECTOR DATA... [||||||||||] 100%`; sndType(); }, 1200);
-                setTimeout(() => { document.getElementById('btn-start').style.display = 'inline-block'; sndPing(); cmdInput.disabled = false; cmdInput.focus(); }, 1800);
+                setTimeout(() => { document.getElementById('btn-start').style.display = 'inline-block'; sndPing(); }, 1800);
             } else if (target.type === 'enemy') {
                 let en = target.ref;
                 if (en.type === 'boss') {
@@ -1062,7 +612,6 @@
                         addFloatingText(en.x, en.y + 15, `+${zReward}Z`, "var(--term-zephyr)");
                     } 
                     addFloatingText(en.x, en.y, "DECRYPTED", "#fff"); sndPing(); 
-                    
                     let idx = enemies.indexOf(en);
                     if (idx > -1) enemies.splice(idx, 1); 
                 }
@@ -1099,12 +648,9 @@
                 }
             }
         }
+        // ==========================================
 
-      function togglePlacement(type) {
-            // FIX: Clear the typing lock whenever you open/close a build menu!
-            targetLock = null; lockString = ""; cmdInput.value = "";
-            focusMode = false; gameContainer.classList.remove('focus-mode');
-            
+        function togglePlacement(type) {
             if (placementMode === type) {
                 placementMode = null; gameContainer.classList.remove('placement-mode');
             } else {
@@ -1112,6 +658,7 @@
             }
             updatePlacementUI();
         }
+
         function updatePlacementUI() {
             document.getElementById('hk-1').classList.remove('active');
             document.getElementById('hk-2').classList.remove('active');
@@ -1148,7 +695,7 @@
 
         function addBuilding(type, x, y) {
             if (type === 'sentry') {
-                buildings.push({ type: 'sentry', x: x, y: y, hp: 12, maxHp: 12, cooldown: 0, size: 16, angle: 0, level: 1, territory: 150, encrypted: false, recoil: 0 });
+                buildings.push({ type: 'sentry', x: x, y: y, hp: 12, maxHp: 12, cooldown: 0, size: 16, angle: 0, level: 1, territory: 100, encrypted: false, recoil: 0 });
                 addFloatingText(x, y, "SENTRY ONLINE", "#39ff14"); createExplosion(x, y, "#39ff14", 10);
             } else if (type === 'firewall') {
                 buildings.push({ type: 'firewall', x: x, y: y, hp: 60, maxHp: 60, width: 16, height: 60, encrypted: false, isHit: false });
@@ -1157,13 +704,13 @@
                 buildings.push({ type: 'mine', x: x, y: y, hp: 1, maxHp: 1, radius: 10, encrypted: false });
                 addFloatingText(x, y, "MINE ARMED", "#ff003c"); createExplosion(x, y, "#ff003c", 5);
             } else if (type === 'pulse') {
-                buildings.push({ type: 'pulse', x: x, y: y, hp: 20, maxHp: 20, charge: 0, radius: 120, encrypted: false });
+                buildings.push({ type: 'pulse', x: x, y: y, hp: 20, maxHp: 20, charge: 0, radius: 80, encrypted: false });
                 addFloatingText(x, y, "PULSE TOWER ACTIVE", "#d900ff"); createExplosion(x, y, "#d900ff", 15);
             } else if (type === 'zephyr_sentry') {
-                buildings.push({ type: 'zephyr_sentry', x: x, y: y, hp: 40, maxHp: 40, cooldown: 0, size: 18, angle: 0, territory: 200, encrypted: false, recoil: 0 });
+                buildings.push({ type: 'zephyr_sentry', x: x, y: y, hp: 40, maxHp: 40, cooldown: 0, size: 18, angle: 0, territory: 150, encrypted: false, recoil: 0 });
                 addFloatingText(x, y, "Z-SENTRY ONLINE", "var(--term-zephyr)"); createExplosion(x, y, "var(--term-zephyr)", 20);
             } else if (type === 'plasma_mortar') {
-                buildings.push({ type: 'plasma_mortar', x: x, y: y, hp: 30, maxHp: 30, cooldown: 0, size: 20, territory: 300, encrypted: false });
+                buildings.push({ type: 'plasma_mortar', x: x, y: y, hp: 30, maxHp: 30, cooldown: 0, size: 20, territory: 250, encrypted: false });
                 addFloatingText(x, y, "P-MORTAR DEPLOYED", "var(--term-zephyr)"); createExplosion(x, y, "var(--term-zephyr)", 20);
             }
             sndPing(); updatePlacementUI();
@@ -1197,7 +744,6 @@
             document.getElementById('shop-prestige').textContent = `DAMAGE MULTIPLIER: ${prestigeMult.toFixed(1)}x`;
             document.getElementById('btn-prestige').style.display = 'none'; 
             
-            focusMode = false; gameContainer.classList.remove('focus-mode'); 
             startNextWave();
         }
 
@@ -1235,10 +781,14 @@
             document.getElementById('boot-log').innerHTML = `> WAITING FOR USER INPUT...<br>> TO INITIATE SEQUENCE, TYPE: <span class="log-cmd blink-cmd">sys.boot</span> IN TERMINAL BELOW.`;
             document.getElementById('btn-start').style.display = 'none';
             if (highScore > 0) document.getElementById('personal-best').textContent = `BEST SECTOR REACHED: ${highScore}`;
-            
-            focusMode = false; gameContainer.classList.remove('focus-mode'); 
-            
             document.getElementById('start-screen').classList.add('active'); cmdInput.focus();
+        }
+
+        function initStars() {
+            bgStars = [];
+            for (let i = 0; i < 150; i++) {
+                bgStars.push({ x: Math.random() * canvas.width, y: Math.random() * canvas.height, size: Math.random() * 2.5 + 0.5, speed: Math.random() * 2 + 0.5 });
+            }
         }
 
         function startGame() {
@@ -1292,6 +842,7 @@
                 }
             }
 
+            // Anomaly System Logic
             if (wave > 2 && wave % 3 === 0) {
                 currentAnomaly = ALL_ANOMALIES[Math.floor(Math.random() * ALL_ANOMALIES.length)];
                 document.getElementById('ui-anomaly').innerHTML = `ANOMALY DETECTED: <span style="color:${currentAnomaly.color}">${currentAnomaly.name}</span>`;
@@ -1415,6 +966,7 @@
             let hpScale = 1 + (wave * 0.20) + (prestigeLevel * 1.5); 
             let speedScale = 1 + (wave * 0.04);
             
+            // Anomaly modifier
             if (currentAnomaly.name === "OVERCLOCK") speedScale *= 1.5;
 
             let cWorm = zephyrUnlocked ? "#ff00ff" : "#ff003c";
@@ -1441,6 +993,7 @@
                     else dict = complexWords;
                 }
                 
+                // Prevent spawning words that match commands to avoid lock collision
                 e.word = dict[Math.floor(Math.random() * dict.length)];
                 while(['repair', 'overclock', 'purge'].includes(e.word)) { e.word = dict[Math.floor(Math.random() * dict.length)]; }
                 
@@ -1460,10 +1013,137 @@
                 e.speed = (Math.random() * 1.0 + 0.8) * speedScale; e.size = 20; e.maxHp = Math.floor(2 * hpScale); e.color = cBug; 
             }
             
+            // Apply CRITICAL_MASS Anomaly
             if (currentAnomaly.name === "CRITICAL_MASS") e.maxHp *= 2;
             e.hp = e.maxHp;
 
             enemies.push(e); enemiesToSpawn--; 
+        }
+
+        canvas.addEventListener('mousedown', (e) => {
+            initAudio(); if (gameState !== 'PLAYING') return;
+            const rect = canvas.getBoundingClientRect(); const scaleX = canvas.width / rect.width; const scaleY = canvas.height / rect.height;
+            const clickX = (e.clientX - rect.left) * scaleX; const clickY = (e.clientY - rect.top) * scaleY;
+
+            if (focusMode) {
+                shakeFrames = 3; addFloatingText(clickX, clickY, "SYS.LOCKED", "#ff003c"); sndError();
+                document.getElementById('cmd-input').style.background = "rgba(255,0,60,0.3)"; setTimeout(() => document.getElementById('cmd-input').style.background = "transparent", 150);
+                return;
+            }
+
+            if (placementMode) {
+                let costBytes = 0; let costZeph = 0;
+                if (placementMode === 'sentry') costBytes = Math.floor(60 * Math.pow(1.2, buildings.filter(b=>b.type==='sentry').length));
+                if (placementMode === 'firewall') costBytes = 40;
+                if (placementMode === 'mine') costBytes = 30;
+                if (placementMode === 'pulse') costBytes = 120;
+                if (placementMode === 'zephyr_sentry') costZeph = 50;
+                if (placementMode === 'plasma_mortar') costZeph = 100;
+
+                if (buildings.length >= maxBuildings) {
+                    addFloatingText(clickX, clickY, "CAPACITY REACHED", "#ff003c"); sndError(); togglePlacement(placementMode);
+                } else if (costBytes > 0 && currentMana >= costBytes) {
+                    currentMana -= costBytes; addBuilding(placementMode, clickX, clickY); togglePlacement(placementMode);
+                } else if (costZeph > 0 && playerStats.zephyrite >= costZeph) {
+                    playerStats.zephyrite -= costZeph; addBuilding(placementMode, clickX, clickY); togglePlacement(placementMode);
+                } else {
+                    addFloatingText(clickX, clickY, costZeph > 0 ? "INSUFFICIENT ZEPH" : "INSUFFICIENT ENG", "#ff003c"); sndError(); togglePlacement(placementMode);
+                }
+                return; 
+            }
+
+            let clickedBuilding = null;
+            for(let i=0; i<buildings.length; i++) {
+                let b = buildings[i];
+                if (b.type === 'sentry' && Math.hypot(b.x - clickX, b.y - clickY) < b.size * 1.5) { clickedBuilding = b; break; }
+                if (b.type === 'firewall' && Math.abs(b.x - clickX) < b.width && Math.abs(b.y - clickY) < b.height) { clickedBuilding = b; break; }
+            }
+
+            if (clickedBuilding && clickedBuilding.type === 'sentry') {
+                if (clickedBuilding.encrypted) { addFloatingText(clickX, clickY, "ENCRYPTED - TYPE TO UNLOCK", "#ff003c"); sndError(); return; }
+                let upgCost = clickedBuilding.level === 1 ? 100 : (clickedBuilding.level === 2 ? 250 : (clickedBuilding.level === 3 ? 500 : (clickedBuilding.level === 4 ? 800 : -1)));
+                if (upgCost !== -1 && currentMana >= upgCost) {
+                    currentMana -= upgCost; clickedBuilding.level++; clickedBuilding.maxHp += 20; clickedBuilding.hp = clickedBuilding.maxHp; clickedBuilding.territory += 40;
+                    if (clickedBuilding.level === 5) {
+                        addFloatingText(clickX, clickY, `OMEGA SENTRY`, "#ff003c"); createExplosion(clickX, clickY, "#ff003c", 40); sndPulse();
+                    } else {
+                        addFloatingText(clickX, clickY, `LVL ${clickedBuilding.level} UPGRADE`, "#39ff14"); createExplosion(clickX, clickY, "#00f3ff", 20); sndPing();
+                    }
+                } else if (upgCost === -1) { addFloatingText(clickX, clickY, "MAX LEVEL", "#00f3ff"); sndError();
+                } else { addFloatingText(clickX, clickY, `NEED ${upgCost} ENG`, "#ff003c"); sndError(); }
+                return; 
+            }
+
+            if (currentMana < playerStats.smiteCost) {
+                document.getElementById('mana-bar').style.background = "#ff003c"; sndError(); setTimeout(() => document.getElementById('mana-bar').style.background = "var(--term-cyan)", 150); return;
+            }
+
+            // Anomaly LUCKY_STRIKE modifier
+            let pwr = playerStats.smiteDmg; 
+            if (currentAnomaly.name === "LUCKY_STRIKE") pwr *= 3;
+
+            currentMana -= playerStats.smiteCost; 
+            shakeFrames = 3 + (pwr * 2); 
+            lightnings.push({ x: clickX, y: clickY, life: 10 + (pwr*5), thickness: pwr }); 
+            scorchMarks.push({ x: clickX, y: clickY, life: 60 + (pwr*20), size: pwr });
+            createExplosion(clickX, clickY, "#00f3ff", 10 + (pwr*5)); sndExplode();
+            
+            let smiteRadius = playerStats.smiteSplash ? 100 : (60 + (pwr*5));
+
+            for (let i = enemies.length - 1; i >= 0; i--) {
+                const enemy = enemies[i];
+                if (Math.hypot(enemy.x - clickX, enemy.y - clickY) < smiteRadius + enemy.size) {
+                    if (enemy.shielded) { addFloatingText(enemy.x, enemy.y, "ENCRYPTED", "#ff003c"); createExplosion(enemy.x, enemy.y, "#ff003c", 10); continue; }
+                    if (enemy.type === 'phantom' && enemy.alpha < 0.5) continue; 
+
+                    enemy.hp -= (pwr * prestigeMult); 
+                    
+                    if (enemy.hp <= 0) {
+                        createExplosion(enemy.x, enemy.y, enemy.color, 50); 
+                        if (enemy.type === 'boss') {
+                            playerStats.souls += 1000; playerStats.faith = 100;
+                            if (wave > 10) { playerStats.zephyrite += 200; addFloatingText(enemy.x, enemy.y + 20, "+200 ZEPH", "var(--term-zephyr)"); }
+                            addFloatingText(enemy.x, enemy.y, "BOSS DEFEATED: +1000 BYTES", "#39ff14"); addFloatingText(canvas.width/2, canvas.height/2, "SYSTEM FULLY RESTORED", "#39ff14");
+                            shakeFrames = 30; damageFlash = 0.8; activeBoss = null; bossOverlay.style.opacity = '0';
+                        } else {
+                            playerStats.souls += enemy.maxHp * 15; addFloatingText(enemy.x, enemy.y, `+${enemy.maxHp * 15}`, "#fff");
+                            if (wave > 10) {
+                                let zDrop = Math.ceil(enemy.maxHp * 2); playerStats.zephyrite += zDrop;
+                                addFloatingText(enemy.x, enemy.y + 15, `+${zDrop}Z`, "var(--term-zephyr)");
+                            }
+                        }
+                        enemies.splice(i, 1);
+                    } else {
+                        createExplosion(enemy.x, enemy.y, "#fff", 10); addFloatingText(enemy.x, enemy.y, `HIT`, "#fff");
+                        if(enemy.type === 'boss') sndBossHit();
+                    }
+                }
+            }
+        });
+
+        function createExplosion(x, y, color, amount) {
+            for (let i = 0; i < amount; i++) {
+                particles.push({ 
+                    x: x, 
+                    y: y, 
+                    vx: (Math.random() - 0.5) * 15, 
+                    vy: (Math.random() - 0.5) * 15, 
+                    life: 1.0, 
+                    color: color, 
+                    size: Math.floor(Math.random() * 5 + 2)
+                });
+            }
+        }
+
+        function addFloatingText(x, y, text, color) {
+            floatingTexts.push({ 
+                x: x, 
+                y: y, 
+                text: text, 
+                color: color, 
+                life: 1.0, 
+                vy: -1.0 
+            });
         }
 
         function drawStars(timeScale) {
@@ -1719,7 +1399,7 @@
                 
                 ctx.fillRect(e.x - e.size - sPulse/2, e.y - e.size - sPulse/2, e.size*2 + sPulse, e.size*2 + sPulse);
                 
-                ctx.font = e.type === 'boss' ? "bold 30px 'VT323', monospace" : "bold 20px 'VT323', monospace"; 
+                ctx.font = e.type === 'boss' ? "bold 30px 'VT323', monospace" : "bold 18px 'VT323', monospace"; 
                 
                 // Z-TYPE MECHANIC: Slice word if it is currently locked!
                 let displayWord = e.word;
@@ -2014,8 +1694,8 @@
                                     activeBoss = null; 
                                     bossOverlay.style.opacity = '0'; 
                                 } else { 
-                                    playerStats.souls += enemies[e].maxHp * 15; 
-                                    if(wave > 10) playerStats.zephyrite += Math.ceil(enemies[e].maxHp * 2); 
+                                    playerStats.souls += target.maxHp * 15; 
+                                    if(wave > 10) playerStats.zephyrite += Math.ceil(target.maxHp * 2); 
                                 }
                                 enemies.splice(enemies.indexOf(target), 1); 
                             }
@@ -2213,14 +1893,14 @@
                                                 playerStats.faith = 100; 
                                                 activeBoss = null; 
                                                 bossOverlay.style.opacity = '0'; 
-                                                if(wave > 10) playerStats.zephyrite += 200; 
+                                                if (wave > 10) playerStats.zephyrite += 200; 
                                             } else { 
                                                 playerStats.souls += enemies[e].maxHp * 15; 
-                                                if(wave > 10) playerStats.zephyrite += Math.ceil(enemies[e].maxHp * 2); 
+                                                if (wave > 10) playerStats.zephyrite += Math.ceil(enemies[e].maxHp * 2); 
                                             }
                                             enemies.splice(e, 1);
                                         } else { 
-                                            createExplosion(enemies[e].x, enemies[e].y, "#fff", 10); 
+                                            createExplosion(enemies[e].x, enemies[e].y, "#fff", 5); 
                                         }
                                     }
                                 }
@@ -2302,35 +1982,35 @@
 
             if (wave === 0) {
                 ctx.fillStyle = "rgba(0, 0, 0, 0.8)"; 
-                ctx.fillRect(0, 0, canvas.width, 80); 
+                ctx.fillRect(0, 0, canvas.width, 60); 
                 
                 ctx.fillStyle = "#39ff14"; 
-                ctx.font = "bold 28px 'VT323', monospace"; 
+                ctx.font = "bold 24px 'VT323', monospace"; 
                 ctx.textAlign = "center";
                 
                 if (tutorialStep === 0) { 
-                    ctx.fillText("TUTORIAL: Press [ 1 ] or click the SENTRY hotkey, then CLICK grid to build.", canvas.width/2, 45); 
+                    ctx.fillText("TUTORIAL: Press [ 1 ] or click the SENTRY hotkey, then CLICK grid to build.", canvas.width/2, 35); 
                     if (buildings.length > 0) tutorialStep = 1; 
                 }
                 else if (tutorialStep === 1) { 
-                    ctx.fillText("TUTORIAL: CLICK anywhere on the grid to cast SMITE (Costs 20 ENG).", canvas.width/2, 45); 
+                    ctx.fillText("TUTORIAL: CLICK anywhere on the grid to cast SMITE (Costs 20 ENG).", canvas.width/2, 35); 
                     if (currentMana <= playerStats.maxMana - 20) { tutorialStep = 2; tutorialWait = 60; } 
                 }
                 else if (tutorialStep === 2) { 
                     tutorialWait -= timeScale; 
-                    ctx.fillText("TUTORIAL: Enemies approach from the left. Defend the server!", canvas.width/2, 45); 
+                    ctx.fillText("TUTORIAL: Enemies approach from the left. Defend the server!", canvas.width/2, 35); 
                     if (tutorialWait <= 0 && enemies.length === 0) { 
                         enemies.push({ x: -40, y: canvas.height/2, type: 'bug', shielded: false, speed: 0.8, size: 20, hp: 2, maxHp: 2, color: "#d900ff" }); 
                         tutorialStep = 3; 
                     } 
                 }
                 else if (tutorialStep === 3) { 
-                    ctx.fillText("TUTORIAL: Defeat the bug using Smite or let your Sentry destroy it.", canvas.width/2, 45); 
+                    ctx.fillText("TUTORIAL: Defeat the bug using Smite or let your Sentry destroy it.", canvas.width/2, 35); 
                     if (enemies.length === 0) { tutorialStep = 4; tutorialWait = 60; } 
                 }
                 else if (tutorialStep === 4) { 
                     tutorialWait -= timeScale; 
-                    ctx.fillText("TUTORIAL: Orange enemies are shielded. Just start typing their word to lock on!", canvas.width/2, 45); 
+                    ctx.fillText("TUTORIAL: Orange enemies are shielded. Just start typing their word to lock on!", canvas.width/2, 35); 
                     if (tutorialWait <= 0 && enemies.length === 0) { 
                         tutorialTarget = { x: -40, y: canvas.height/2, type: 'trojan', shielded: true, speed: 0.4, size: 28, hp: 5, maxHp: 5, color: "#ff8800", word: "type" }; 
                         enemies.push(tutorialTarget); 
@@ -2338,11 +2018,11 @@
                     } 
                 }
                 else if (tutorialStep === 5) { 
-                    ctx.fillText("TUTORIAL: Type the word on your keyboard! Watch your combo meter!", canvas.width/2, 45); 
-                    if (enemies.length === 0) { tutorialStep = 6; tutorialWait = 30; } 
+                    ctx.fillText("TUTORIAL: Type the word on your keyboard! Watch your combo meter!", canvas.width/2, 35); 
+                    if (enemies.length === 0) { tutorialStep = 6; tutorialWait = 100; } 
                 }
                 else if (tutorialStep === 6) { 
-                    ctx.fillText("TUTORIAL COMPLETE. Accessing terminal uplink...", canvas.width/2, 45); 
+                    ctx.fillText("TUTORIAL COMPLETE. Accessing terminal uplink...", canvas.width/2, 35); 
                     tutorialWait -= timeScale; 
                     if (tutorialWait <= 0) { openShop(); } 
                 }
@@ -2359,9 +2039,9 @@
                     }
                     
                     ctx.fillStyle = "#ff003c"; 
-                    ctx.font = "bold 80px 'VT323'"; 
+                    ctx.font = "bold 60px 'VT323'"; 
                     ctx.textAlign = "center"; 
-                    ctx.shadowBlur = 20; 
+                    ctx.shadowBlur = 10; 
                     ctx.shadowColor = "#ff003c"; 
                     ctx.fillText("WARNING: KERNEL PANIC IMMINENT", canvas.width/2, canvas.height/2); 
                     ctx.shadowBlur = 0; 
@@ -2427,14 +2107,14 @@
             
             if (focusMode) { 
                 ctx.fillStyle = "rgba(0, 243, 255, 0.2)"; 
-                ctx.font = "bold 80px 'VT323', monospace"; 
+                ctx.font = "bold 60px 'VT323', monospace"; 
                 ctx.textAlign = "center"; 
                 ctx.fillText("MOUSE LOCKED", canvas.width/2, canvas.height/2 + 20); 
             }
             
             if (empTimer > 0) { 
                 ctx.fillStyle = "rgba(0, 255, 204, 0.2)"; 
-                ctx.font = "bold 60px 'VT323', monospace"; 
+                ctx.font = "bold 40px 'VT323', monospace"; 
                 ctx.textAlign = "center"; 
                 ctx.fillText("EMP ACTIVE - SYSTEMS DISABLED", canvas.width/2, canvas.height/2 - 40); 
             }
@@ -2461,7 +2141,7 @@
             }
 
             // Draw Z-Type Letter Projectiles
-            ctx.font = "bold 32px 'VT323', monospace";
+            ctx.font = "bold 28px 'VT323', monospace";
             ctx.textAlign = "center";
             for (let i = letterProjectiles.length - 1; i >= 0; i--) {
                 let lp = letterProjectiles[i];
@@ -2477,15 +2157,13 @@
                     lp.y += (dy / dist) * lp.speed * timeScale;
                     
                     // Trail behind letter
-                    ctx.strokeStyle = "rgba(57, 255, 20, 0.8)";
-                    ctx.lineWidth = 3;
+                    ctx.fillStyle = "rgba(57, 255, 20, 0.4)";
                     ctx.beginPath(); 
-                    ctx.moveTo(lp.x, lp.y);
-                    ctx.lineTo(lp.x - (dx/dist)*30, lp.y - (dy/dist)*30);
-                    ctx.stroke();
+                    ctx.arc(lp.x - (dx/dist)*12, lp.y - (dy/dist)*12, 5, 0, Math.PI*2); 
+                    ctx.fill();
                     
-                    ctx.fillStyle = "#fff";
-                    ctx.fillText(lp.char, lp.x, lp.y + 10);
+                    ctx.fillStyle = "#39ff14";
+                    ctx.fillText(lp.char, lp.x, lp.y);
                 }
             }
 
@@ -2714,7 +2392,7 @@
                 if (bolt.life <= 0) lightnings.splice(i, 1);
             }
             
-            ctx.font = "bold 28px 'VT323', monospace"; 
+            ctx.font = "bold 24px 'VT323', monospace"; 
             ctx.textAlign = "center";
             
             for (let i = floatingTexts.length - 1; i >= 0; i--) { 
