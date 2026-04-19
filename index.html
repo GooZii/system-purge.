@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>System_Purge.exe v4.4 (Perfect Z-Type Edition)</title>
+    <title>System_Purge.exe v4.5 (Definitive Z-Type Edition)</title>
     <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -67,7 +67,9 @@
         .focus-mode .terminal-container { background: #001a33; border-color: var(--term-cyan); border-top: 2px solid var(--term-cyan); }
         .focus-mode #cmd-input { color: #fff; text-shadow: 0 0 5px #fff; }
 
-        .prompt { color: var(--term-green); margin-right: 15px; font-weight: bold; }
+        .prompt { color: var(--term-cyan); margin-right: 15px; font-weight: bold; }
+        
+        /* Input specifically configured to prevent mobile predictive text bugs */
         #cmd-input {
             background: transparent; border: none; color: var(--term-green);
             font-family: 'VT323', monospace; font-size: 2.5rem; flex-grow: 1; outline: none; text-transform: lowercase;
@@ -170,7 +172,7 @@
 
         #boot-log { text-align: left; width: 80%; max-width: 800px; font-size: 2rem; color: #889; margin-bottom: 20px; line-height: 1.6; min-height: 120px; }
         .log-sys { color: var(--term-red); text-shadow: 0 0 5px var(--term-red);}
-        .log-cmd { color: var(--term-green); text-shadow: 0 0 5px var(--term-green);}
+        .log-cmd { color: var(--term-cyan); text-shadow: 0 0 5px var(--term-cyan);}
         
         #personal-best { color: var(--term-cyan); font-size: 2.5rem; margin-top: 15px; margin-bottom: 20px; text-shadow: 0 0 8px var(--term-cyan); }
         
@@ -223,7 +225,7 @@
 
         <div class="terminal-container" id="terminal-box">
             <span class="prompt">C:\></span>
-            <input type="text" id="cmd-input" autocomplete="off" spellcheck="false" autofocus>
+            <input type="text" id="cmd-input" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" autofocus>
         </div>
 
         <div id="start-screen" class="screen active">
@@ -292,7 +294,7 @@
     </div>
 
     <script>
-        // Fixed Internal Logical Resolution & Resizer Math
+        // Game Logic rendering resolution
         const canvas = document.getElementById('gameCanvas'); 
         const ctx = canvas.getContext('2d');
         canvas.width = 1280;
@@ -450,12 +452,8 @@
         let highScore = localStorage.getItem('sysPurgeHighScore') || 0;
         if (highScore > 0) document.getElementById('personal-best').textContent = `BEST SECTOR REACHED: ${highScore}`;
 
-        // Initialize stars for the title screen
         initStars();
 
-        // ==========================================
-        // SHARE RESULTS FEATURE
-        // ==========================================
         function shareRun() {
             let anomalyText = currentAnomaly.name !== "NONE" ? ` | 🎲 ${currentAnomaly.name}` : "";
             let text = `System_Purge.exe [v4.4]\nSector Reached: ${currentFinalScore}${anomalyText}\nScore: ${playerStats.souls} BYTES\n\nCan you beat my system record? 💾🔥⚡️`;
@@ -469,9 +467,6 @@
             });
         }
 
-        // ==========================================
-        // DREAMLO GLOBAL LEADERBOARD API 
-        // ==========================================
         const DREAMLO_PUBLIC_CODE = "69e11f208f40bb10681d516e";
         const DREAMLO_PRIVATE_CODE = "p_mnuGlM_kiGiA7AnsWj_gmuv1v4x3tkilZ7OQO02giQ"; 
 
@@ -526,12 +521,24 @@
         }
 
         // ==========================================
-        // PERFECT MOUSE CLICK MATH 
-        // Calculates actual bounding box regardless of CSS scaling
+        // PERFECT MOUSE CLICK MATH & TOUCH ENGINE
+        // This solves the '1 getting stuck' and 'enemy not dying' bug by 
+        // completely bypassing the mobile keyboard 'dismiss swallow' behavior
         // ==========================================
-        canvas.addEventListener('pointerdown', (e) => {
+        function handleInteract(e) {
             initAudio(); 
             if (gameState !== 'PLAYING') return;
+            
+            let clientX, clientY;
+            if (e.touches && e.touches.length > 0) {
+                clientX = e.touches[0].clientX;
+                clientY = e.touches[0].clientY;
+            } else {
+                clientX = e.clientX;
+                clientY = e.clientY;
+            }
+
+            if (clientX === undefined || clientY === undefined) return;
             
             const rect = canvas.getBoundingClientRect(); 
             const canvasRatio = canvas.width / canvas.height;
@@ -552,10 +559,9 @@
             const scaleX = canvas.width / renderWidth;
             const scaleY = canvas.height / renderHeight;
             
-            const clickX = (e.clientX - rect.left - offsetX) * scaleX; 
-            const clickY = (e.clientY - rect.top - offsetY) * scaleY;
+            const clickX = (clientX - rect.left - offsetX) * scaleX; 
+            const clickY = (clientY - rect.top - offsetY) * scaleY;
 
-            // If the user clicked outside the valid game area (in the black bars)
             if (clickX < 0 || clickX > canvas.width || clickY < 0 || clickY > canvas.height) {
                 if (placementMode) togglePlacement(placementMode);
                 if (focusMode) {
@@ -565,7 +571,6 @@
                 return;
             }
 
-            // Click anywhere else to cancel a target lock
             if (focusMode) {
                 targetLock = null; lockString = ""; cmdInput.value = ""; combo = 0;
                 focusMode = false; gameContainer.classList.remove('focus-mode');
@@ -621,7 +626,6 @@
                 document.getElementById('mana-bar').style.background = "#ff003c"; sndError(); setTimeout(() => document.getElementById('mana-bar').style.background = "var(--term-cyan)", 150); return;
             }
 
-            // Anomaly LUCKY_STRIKE modifier
             let pwr = playerStats.smiteDmg; 
             if (currentAnomaly.name === "LUCKY_STRIKE") pwr *= 3;
 
@@ -662,9 +666,14 @@
                     }
                 }
             }
-        });
+        }
 
-        // Keeps keyboard focus on the terminal when you tap the screen
+        canvas.addEventListener('mousedown', handleInteract);
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault(); 
+            handleInteract(e);
+        }, { passive: false });
+
         document.querySelector('.game-wrapper').addEventListener('click', (e) => { 
             initAudio(); 
             if (e.target.tagName !== 'TEXTAREA' && e.target.tagName !== 'INPUT' && e.target.tagName !== 'BUTTON' && !e.target.closest('button') && !e.target.closest('.building-option')) {
@@ -673,14 +682,9 @@
         });
 
         // ==========================================
-        // KEYBOARD HOTKEYS (Removed from typing engine!)
+        // KEYBOARD HOTKEYS (Removed from the typing engine!)
         // ==========================================
         window.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                return;
-            }
-
             if (gameState === 'PLAYING' && !targetLock) {
                 if (['1','2','3','4','5','6'].includes(e.key)) {
                     e.preventDefault(); 
@@ -693,7 +697,6 @@
                 }
             }
             
-            // Allow canceling lock easily with Escape
             if ((e.key === 'Escape' || e.key === 'Backspace') && targetLock) {
                 targetLock = null; lockString = ""; cmdInput.value = ""; combo = 0; sndError();
                 focusMode = false; gameContainer.classList.remove('focus-mode');
@@ -701,7 +704,8 @@
         });
 
         // ==========================================
-        // Z-TYPE INPUT ENGINE (Loops over all pasted/fast-typed chars!)
+        // Z-TYPE INPUT ENGINE
+        // Completely refactored to support predictive text, copy/paste, and autocorrect bugginess
         // ==========================================
         cmdInput.addEventListener('input', (e) => {
             initAudio();
@@ -711,7 +715,8 @@
             }
             if (useCustomWords && document.activeElement.id === 'custom-dict-input') return;
 
-            let val = cmdInput.value.toLowerCase();
+            // Automatically clean the input from mobile keyboards adding phantom spaces
+            let val = cmdInput.value.toLowerCase().replace(/\s/g, ''); 
 
             if (val.length < lockString.length) {
                 targetLock = null; lockString = ""; cmdInput.value = ""; combo = 0; sndError();
@@ -720,10 +725,10 @@
             }
 
             let newChars = val.slice(lockString.length);
+            let validSoFar = true;
             
             for (let i = 0; i < newChars.length; i++) {
                 let key = newChars[i];
-                if (key === ' ') continue;
 
                 if (!targetLock) {
                     let potentialTargets = [];
@@ -753,12 +758,15 @@
                         if (lockString === targetLock.word) {
                             executeLock(targetLock);
                             targetLock = null; lockString = ""; focusMode = false; gameContainer.classList.remove('focus-mode');
+                            cmdInput.value = ""; 
+                            validSoFar = false;
                             break; 
                         }
                     } else {
                         combo = 0; sndError();
-                        // Flash Red globally even on START screen to alert users of a typo
-                        shakeFrames = 3; document.getElementById('cmd-input').style.background = "rgba(255,0,60,0.3)"; setTimeout(() => document.getElementById('cmd-input').style.background = "transparent", 150);
+                        if (gameState === 'PLAYING') { shakeFrames = 3; document.getElementById('cmd-input').style.background = "rgba(255,0,60,0.3)"; setTimeout(() => document.getElementById('cmd-input').style.background = "transparent", 150); }
+                        targetLock = null; lockString = ""; cmdInput.value = ""; focusMode = false; gameContainer.classList.remove('focus-mode');
+                        validSoFar = false;
                         break; 
                     }
                 } else {
@@ -770,24 +778,29 @@
                         if (lockString === targetLock.word) {
                             executeLock(targetLock);
                             targetLock = null; lockString = ""; focusMode = false; gameContainer.classList.remove('focus-mode');
+                            cmdInput.value = ""; 
+                            validSoFar = false;
                             break; 
                         }
                     } else {
                         combo = 0; sndError();
-                        shakeFrames = 3; document.getElementById('cmd-input').style.background = "rgba(255,0,60,0.3)"; setTimeout(() => document.getElementById('cmd-input').style.background = "transparent", 150);
+                        if (gameState === 'PLAYING') { shakeFrames = 3; document.getElementById('cmd-input').style.background = "rgba(255,0,60,0.3)"; setTimeout(() => document.getElementById('cmd-input').style.background = "transparent", 150); }
+                        targetLock = null; lockString = ""; cmdInput.value = ""; focusMode = false; gameContainer.classList.remove('focus-mode');
+                        validSoFar = false;
                         break; 
                     }
                 }
             }
             
-            cmdInput.value = lockString;
+            // Only update input UI value if we didn't just clear it by breaking out of an error or success state
+            if (validSoFar) cmdInput.value = lockString;
         });
 
         function shootLetterProjectile(key, target) {
             if (gameState !== 'PLAYING') return; 
             
             let startX = canvas.width / 2;
-            let startY = canvas.height; // Shoot from terminal location
+            let startY = canvas.height; 
             
             let tx = canvas.width / 2;
             let ty = canvas.height / 2;
@@ -801,7 +814,7 @@
                 y: startY,
                 tx: tx,
                 ty: ty,
-                speed: 25 // Slower speed so players can admire the lasers!
+                speed: 25 
             });
         }
 
@@ -866,7 +879,6 @@
                 }
             }
         }
-        // ==========================================
 
         function togglePlacement(type) {
             if (placementMode === type) {
@@ -966,7 +978,7 @@
             document.getElementById('shop-prestige').textContent = `DAMAGE MULTIPLIER: ${prestigeMult.toFixed(1)}x`;
             document.getElementById('btn-prestige').style.display = 'none'; 
             
-            focusMode = false; gameContainer.classList.remove('focus-mode'); // Fix for the stuck focus mode bug
+            focusMode = false; gameContainer.classList.remove('focus-mode'); 
             startNextWave();
         }
 
@@ -1005,16 +1017,9 @@
             document.getElementById('btn-start').style.display = 'none';
             if (highScore > 0) document.getElementById('personal-best').textContent = `BEST SECTOR REACHED: ${highScore}`;
             
-            focusMode = false; gameContainer.classList.remove('focus-mode'); // Fix for the stuck focus mode bug
+            focusMode = false; gameContainer.classList.remove('focus-mode'); 
             
             document.getElementById('start-screen').classList.add('active'); cmdInput.focus();
-        }
-
-        function initStars() {
-            bgStars = [];
-            for (let i = 0; i < 150; i++) {
-                bgStars.push({ x: Math.random() * canvas.width, y: Math.random() * canvas.height, size: Math.random() * 2.5 + 0.5, speed: Math.random() * 2 + 0.5 });
-            }
         }
 
         function startGame() {
@@ -1068,7 +1073,6 @@
                 }
             }
 
-            // Anomaly System Logic
             if (wave > 2 && wave % 3 === 0) {
                 currentAnomaly = ALL_ANOMALIES[Math.floor(Math.random() * ALL_ANOMALIES.length)];
                 document.getElementById('ui-anomaly').innerHTML = `ANOMALY DETECTED: <span style="color:${currentAnomaly.color}">${currentAnomaly.name}</span>`;
@@ -1192,7 +1196,6 @@
             let hpScale = 1 + (wave * 0.20) + (prestigeLevel * 1.5); 
             let speedScale = 1 + (wave * 0.04);
             
-            // Anomaly modifier
             if (currentAnomaly.name === "OVERCLOCK") speedScale *= 1.5;
 
             let cWorm = zephyrUnlocked ? "#ff00ff" : "#ff003c";
@@ -1219,7 +1222,6 @@
                     else dict = complexWords;
                 }
                 
-                // Prevent spawning words that match commands to avoid lock collision
                 e.word = dict[Math.floor(Math.random() * dict.length)];
                 while(['repair', 'overclock', 'purge'].includes(e.word)) { e.word = dict[Math.floor(Math.random() * dict.length)]; }
                 
@@ -1239,7 +1241,6 @@
                 e.speed = (Math.random() * 1.0 + 0.8) * speedScale; e.size = 20; e.maxHp = Math.floor(2 * hpScale); e.color = cBug; 
             }
             
-            // Apply CRITICAL_MASS Anomaly
             if (currentAnomaly.name === "CRITICAL_MASS") e.maxHp *= 2;
             e.hp = e.maxHp;
 
@@ -1739,7 +1740,7 @@
                     ctx.fillText(displayWord, b.x, textY);
                 }
 
-                if (b.type ==='sentry' || b.type === 'zephyr_sentry') {
+                if (b.type === 'sentry' || b.type === 'zephyr_sentry') {
                     let bColor = b.type === 'sentry' ? 
                         (b.level === 1 ? "#39ff14" : (b.level === 2 ? "#ff8800" : (b.level === 3 ? "#d900ff" : (b.level === 4 ? "#fff" : "#ff003c")))) 
                         : "#d900ff"; 
