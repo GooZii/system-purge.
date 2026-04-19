@@ -880,19 +880,18 @@
             }
         }
 
-        function togglePlacement(type) {
+      function togglePlacement(type) {
+            // FIX: Clear the typing lock whenever you open/close the build menu!
+            targetLock = null; lockString = ""; cmdInput.value = "";
+            focusMode = false; gameContainer.classList.remove('focus-mode');
+            
             if (placementMode === type) {
-                targetLock = null; lockString = ""; cmdInput.value = "";
                 placementMode = null; gameContainer.classList.remove('placement-mode');
-                focusMode = false; gameContainer.classList.remove('focus-mode');
             } else {
-                targetLock = null; lockString = ""; cmdInput.value = "";
                 placementMode = type; gameContainer.classList.add('placement-mode');
-                focusMode = false; gameContainer.classList.remove('focus-mode');
             }
             updatePlacementUI();
         }
-
         function updatePlacementUI() {
             document.getElementById('hk-1').classList.remove('active');
             document.getElementById('hk-2').classList.remove('active');
