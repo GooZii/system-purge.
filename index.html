@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>System_Purge.exe v4.3 (Perfect Z-Type Edition)</title>
+    <title>System_Purge.exe v4.4 (Perfect Z-Type Edition)</title>
     <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -162,9 +162,10 @@
             box-shadow: 0 0 15px rgba(0, 243, 255, 0.3); pointer-events: none;
         }
 
-        /* Bulletproof JS-controlled Canvas centering */
+        /* Object-fit contain keeps the 16:9 ratio and adds black borders where necessary */
         canvas { 
-            cursor: crosshair; display: block; position: absolute; z-index: 1;
+            cursor: crosshair; display: block; position: absolute; top: 0; left: 0; z-index: 1;
+            width: 100%; height: calc(100vh - 85px); object-fit: contain; 
         }
 
         #boot-log { text-align: left; width: 80%; max-width: 800px; font-size: 2rem; color: #889; margin-bottom: 20px; line-height: 1.6; min-height: 120px; }
@@ -291,32 +292,12 @@
     </div>
 
     <script>
-        // Fixed Internal Logical Resolution & Resizer Math
+        // Fixed Internal Logical Resolution
         const canvas = document.getElementById('gameCanvas'); 
         const ctx = canvas.getContext('2d');
         canvas.width = 1280;
         canvas.height = 720;
 
-        function resizeCanvas() {
-            const targetRatio = 1280 / 720;
-            let w = window.innerWidth;
-            let h = window.innerHeight - 85; // Minus the terminal UI space
-            let windowRatio = w / h;
-            
-            if (windowRatio > targetRatio) {
-                w = h * targetRatio; // Letterbox (Black bars on sides)
-            } else {
-                h = w / targetRatio; // Pillarbox (Black bars top/bottom)
-            }
-            
-            canvas.style.width = w + 'px';
-            canvas.style.height = h + 'px';
-            canvas.style.left = ((window.innerWidth - w) / 2) + 'px';
-            canvas.style.top = ((window.innerHeight - 85 - h) / 2) + 'px';
-        }
-        
-        window.addEventListener('resize', resizeCanvas);
-        resizeCanvas();
         window.addEventListener('scroll', () => { window.scrollTo(0, 0); });
         
         function toggleFullscreen() {
@@ -457,7 +438,7 @@
         // ==========================================
         function shareRun() {
             let anomalyText = currentAnomaly.name !== "NONE" ? ` | 🎲 ${currentAnomaly.name}` : "";
-            let text = `System_Purge.exe [v4.3]\nSector Reached: ${currentFinalScore}${anomalyText}\nScore: ${playerStats.souls} BYTES\n\nCan you beat my system record? 💾🔥⚡️`;
+            let text = `System_Purge.exe [v4.4]\nSector Reached: ${currentFinalScore}${anomalyText}\nScore: ${playerStats.souls} BYTES\n\nCan you beat my system record? 💾🔥⚡️`;
             
             navigator.clipboard.writeText(text).then(() => {
                 let btn = document.getElementById('btn-share');
@@ -525,29 +506,53 @@
         }
 
         // ==========================================
-        // PERFECT MOUSE CLICK MATH (Bulletproof JS Version)
+        // PERFECT MOUSE CLICK MATH 
+        // Calculates actual bounding box regardless of CSS scaling
         // ==========================================
         canvas.addEventListener('pointerdown', (e) => {
             initAudio(); 
             if (gameState !== 'PLAYING') return;
             
             const rect = canvas.getBoundingClientRect(); 
-            const clickX = (e.clientX - rect.left) * (1280 / rect.width);
-            const clickY = (e.clientY - rect.top) * (720 / rect.height);
+            const canvasRatio = canvas.width / canvas.height;
+            const rectRatio = rect.width / rect.height;
+            
+            let renderWidth, renderHeight, offsetX = 0, offsetY = 0;
+            
+            // This is the magic formula that finds exactly where the true game pixels are
+            if (rectRatio > canvasRatio) {
+                renderHeight = rect.height;
+                renderWidth = renderHeight * canvasRatio;
+                offsetX = (rect.width - renderWidth) / 2;
+            } else {
+                renderWidth = rect.width;
+                renderHeight = renderWidth / canvasRatio;
+                offsetY = (rect.height - renderHeight) / 2;
+            }
+            
+            const scaleX = canvas.width / renderWidth;
+            const scaleY = canvas.height / renderHeight;
+            
+            const clickX = (e.clientX - rect.left - offsetX) * scaleX; 
+            const clickY = (e.clientY - rect.top - offsetY) * scaleY;
 
-            // Prevent interacting if they click completely out of bounds somehow
-            if (clickX < 0 || clickX > canvas.width || clickY < 0 || clickY > canvas.height) return;
+            // If the user clicked outside the valid game area (in the black bars)
+            if (clickX < 0 || clickX > canvas.width || clickY < 0 || clickY > canvas.height) {
+                // Instantly cancel placement mode so they don't get trapped!
+                if (placementMode) togglePlacement(placementMode);
+                if (focusMode) {
+                    targetLock = null; lockString = ""; cmdInput.value = ""; combo = 0;
+                    focusMode = false; gameContainer.classList.remove('focus-mode');
+                }
+                return;
+            }
 
-            // Fix for "Stuck in Type Mode": Clicking the background cancels the lock!
+            // Click anywhere else to cancel a target lock
             if (focusMode) {
-                targetLock = null; 
-                lockString = ""; 
-                cmdInput.value = ""; 
-                combo = 0; 
-                sndError();
-                focusMode = false; 
-                gameContainer.classList.remove('focus-mode');
+                targetLock = null; lockString = ""; cmdInput.value = ""; combo = 0;
+                focusMode = false; gameContainer.classList.remove('focus-mode');
                 addFloatingText(clickX, clickY, "LOCK CLEARED", "#00f3ff");
+                sndError();
                 return;
             }
 
@@ -641,7 +646,7 @@
             }
         });
 
-        // Keeps keyboard focus when casually clicking UI
+        // Keeps keyboard focus on the terminal when you tap the screen
         document.querySelector('.game-wrapper').addEventListener('click', (e) => { 
             initAudio(); 
             if (e.target.tagName !== 'TEXTAREA' && e.target.tagName !== 'INPUT' && e.target.tagName !== 'BUTTON' && !e.target.closest('button') && !e.target.closest('.building-option')) {
@@ -649,11 +654,13 @@
             }
         });
 
-        // Fixed Keydown listener so HOTKEYS don't fight the typing engine
+        // ==========================================
+        // KEYBOARD HOTKEYS (Removed from typing engine!)
+        // ==========================================
         window.addEventListener('keydown', (e) => {
             if (gameState === 'PLAYING' && !targetLock) {
                 if (['1','2','3','4','5','6'].includes(e.key)) {
-                    e.preventDefault(); // Stop the number from typing into the input box
+                    e.preventDefault(); // Stop the hotkey from dropping into the terminal!
                     if (e.key === '1') togglePlacement('sentry');
                     if (e.key === '2') togglePlacement('firewall');
                     if (e.key === '3') togglePlacement('mine');
@@ -663,15 +670,14 @@
                 }
             }
             
-            // Allow canceling lock easily with Escape
-            if (e.key === 'Escape' && targetLock) {
+            if ((e.key === 'Escape' || e.key === 'Backspace') && targetLock) {
                 targetLock = null; lockString = ""; cmdInput.value = ""; combo = 0; sndError();
                 focusMode = false; gameContainer.classList.remove('focus-mode');
             }
         });
 
         // ==========================================
-        // Z-TYPE INPUT ENGINE (Completely Rewritten Loop)
+        // Z-TYPE INPUT ENGINE (Loops over all pasted/fast-typed chars!)
         // ==========================================
         cmdInput.addEventListener('input', (e) => {
             initAudio();
@@ -683,24 +689,20 @@
 
             let val = cmdInput.value.toLowerCase();
 
-            // Handle Backspace (Clear lock and break combo)
             if (val.length < lockString.length) {
                 targetLock = null; lockString = ""; cmdInput.value = ""; combo = 0; sndError();
                 focusMode = false; gameContainer.classList.remove('focus-mode');
                 return;
             }
 
-            // Read all NEW characters added this exact frame (Solves the copy/paste/fast-type bug!)
+            // Loop checks every new character added since the last frame
             let newChars = val.slice(lockString.length);
             
             for (let i = 0; i < newChars.length; i++) {
                 let key = newChars[i];
-
-                // Ignore trailing spaces so you don't ruin your combo by hitting spacebar
                 if (key === ' ') continue;
 
                 if (!targetLock) {
-                    // Gather all available targets to lock onto
                     let potentialTargets = [];
                     if (gameState === 'START') {
                         potentialTargets.push({type: 'boot', word: 'sys.boot'});
@@ -711,7 +713,6 @@
                         potentialTargets.push({type: 'command', word: 'overclock'});
                         potentialTargets.push({type: 'command', word: 'purge'});
                         
-                        // Sort by closeness to base (higher X is closer)
                         potentialTargets.sort((a, b) => {
                             let ax = a.type === 'enemy' ? a.ref.x : (a.type === 'building' ? a.ref.x : -999);
                             let bx = b.type === 'enemy' ? b.ref.x : (b.type === 'building' ? b.ref.x : -999);
@@ -725,10 +726,16 @@
                         focusMode = true; 
                         if (gameState === 'PLAYING') { gameContainer.classList.add('focus-mode'); placementMode = null; updatePlacementUI(); }
                         shootLetterProjectile(key, targetLock);
+                        
+                        if (lockString === targetLock.word) {
+                            executeLock(targetLock);
+                            targetLock = null; lockString = ""; focusMode = false; gameContainer.classList.remove('focus-mode');
+                            break; 
+                        }
                     } else {
                         combo = 0; sndError();
                         if (gameState === 'PLAYING') { shakeFrames = 3; document.getElementById('cmd-input').style.background = "rgba(255,0,60,0.3)"; setTimeout(() => document.getElementById('cmd-input').style.background = "transparent", 150); }
-                        break; // Stop parsing chars if wrong
+                        break; 
                     }
                 } else {
                     let expectedKey = targetLock.word.charAt(lockString.length);
@@ -739,17 +746,16 @@
                         if (lockString === targetLock.word) {
                             executeLock(targetLock);
                             targetLock = null; lockString = ""; focusMode = false; gameContainer.classList.remove('focus-mode');
-                            break; // Stop parsing chars because word is finished
+                            break; 
                         }
                     } else {
                         combo = 0; sndError();
                         if (gameState === 'PLAYING') { shakeFrames = 3; document.getElementById('cmd-input').style.background = "rgba(255,0,60,0.3)"; setTimeout(() => document.getElementById('cmd-input').style.background = "transparent", 150); }
-                        break; // Stop parsing chars if wrong
+                        break; 
                     }
                 }
             }
             
-            // Force the physical input to only show successfully typed locked chars
             cmdInput.value = lockString;
         });
 
@@ -757,7 +763,7 @@
             if (gameState !== 'PLAYING') return; 
             
             let startX = canvas.width / 2;
-            let startY = canvas.height; // Shoot from terminal location
+            let startY = canvas.height;
             
             let tx = canvas.width / 2;
             let ty = canvas.height / 2;
@@ -973,13 +979,6 @@
             document.getElementById('btn-start').style.display = 'none';
             if (highScore > 0) document.getElementById('personal-best').textContent = `BEST SECTOR REACHED: ${highScore}`;
             document.getElementById('start-screen').classList.add('active'); cmdInput.focus();
-        }
-
-        function initStars() {
-            bgStars = [];
-            for (let i = 0; i < 150; i++) {
-                bgStars.push({ x: Math.random() * canvas.width, y: Math.random() * canvas.height, size: Math.random() * 2.5 + 0.5, speed: Math.random() * 2 + 0.5 });
-            }
         }
 
         function startGame() {
@@ -1466,13 +1465,11 @@
                 
                 ctx.font = e.type === 'boss' ? "bold 30px 'VT323', monospace" : "bold 20px 'VT323', monospace"; 
                 
-                // Z-TYPE MECHANIC: Slice word if it is currently locked!
                 let displayWord = e.word;
                 if (targetLock && targetLock.type === 'enemy' && targetLock.ref === e) {
                     displayWord = e.word.substring(lockString.length);
                 }
 
-                // DRAW SOLID BACKGROUND FOR THE TEXT TO PREVENT OVERLAPPING VISUALS
                 let textWidth = ctx.measureText(displayWord).width;
                 let textY = e.y - e.size - 10 - sPulse;
                 
@@ -1482,7 +1479,6 @@
                 ctx.lineWidth = 1;
                 ctx.strokeRect(e.x - textWidth/2 - 4, textY - (e.type === 'boss' ? 24 : 16), textWidth + 8, (e.type === 'boss' ? 32 : 20));
                 
-                // DRAW THE TEXT ITSELF
                 ctx.fillStyle = "#fff"; 
                 ctx.textAlign = "center"; 
                 ctx.fillText(displayWord, e.x, textY);
@@ -1958,14 +1954,14 @@
                                                 playerStats.faith = 100; 
                                                 activeBoss = null; 
                                                 bossOverlay.style.opacity = '0'; 
-                                                if (wave > 10) playerStats.zephyrite += 200; 
+                                                if(wave > 10) playerStats.zephyrite += 200; 
                                             } else { 
                                                 playerStats.souls += enemies[e].maxHp * 15; 
-                                                if (wave > 10) playerStats.zephyrite += Math.ceil(enemies[e].maxHp * 2); 
+                                                if(wave > 10) playerStats.zephyrite += Math.ceil(enemies[e].maxHp * 2); 
                                             }
                                             enemies.splice(e, 1);
                                         } else { 
-                                            createExplosion(enemies[e].x, enemies[e].y, "#fff", 5); 
+                                            createExplosion(enemies[e].x, enemies[e].y, "#fff", 10); 
                                         }
                                     }
                                 }
@@ -2084,7 +2080,7 @@
                 }
                 else if (tutorialStep === 5) { 
                     ctx.fillText("TUTORIAL: Type the word on your keyboard! Watch your combo meter!", canvas.width/2, 45); 
-                    if (enemies.length === 0) { tutorialStep = 6; tutorialWait = 100; } 
+                    if (enemies.length === 0) { tutorialStep = 6; tutorialWait = 30; } // Fast forward so player isn't stuck!
                 }
                 else if (tutorialStep === 6) { 
                     ctx.fillText("TUTORIAL COMPLETE. Accessing terminal uplink...", canvas.width/2, 45); 
