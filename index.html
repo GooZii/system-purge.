@@ -355,6 +355,7 @@
         
         let currentFinalScore = 0; 
         let focusMode = false;
+        let hasSeenTutorial = false; // <-- FIX: Tutorial Memory Variable
 
         let targetLock = null;
         let lockString = "";
@@ -481,9 +482,6 @@
             });
         }
 
-        // ==========================================
-        // PERFECT MOUSE ENGINE (No scaling offsets)
-        // ==========================================
         function handleInteract(e) {
             initAudio(); 
             if (gameState !== 'PLAYING') return;
@@ -622,9 +620,6 @@
             }
         });
 
-        // ==========================================
-        // KEYBOARD HOTKEYS & TYPING FIXES
-        // ==========================================
         window.addEventListener('keydown', (e) => {
             if (gameState === 'PLAYING' && !targetLock) {
                 if (['1','2','3','4','5','6'].includes(e.key)) {
@@ -923,7 +918,7 @@
             
             playerStats = { maxMana: 100, manaRegen: 0.2, smiteCost: 20, smiteDmg: 1, souls: 0, zephyrite: 0, faith: 100, autoAtk: 0, autoHack: 0, smiteSplash: false };
             upgradeCosts = { maxMana: 150, regen: 200, dmg: 250, heal: 100, auto: 300, hack: 500, splash: 800 };
-            currentMana = playerStats.maxMana; wave = 0; tutorialStep = 0; tutorialWait = 60; damageFlash = 0; autoNodes = []; buildings = []; bossWarningTimer = 0; spawnTimer = 0;
+            currentMana = playerStats.maxMana; wave = 0; damageFlash = 0; autoNodes = []; buildings = []; bossWarningTimer = 0; spawnTimer = 0;
             empTimer = 0; placementMode = null; pulseUnlocked = false; zephyrUnlocked = false; activeBoss = null; iFrames = 0;
             hasTransitionedToZephyr = false; combo = 0; targetLock = null; lockString = ""; cmdInput.value = ""; letterProjectiles = [];
             
@@ -977,11 +972,21 @@
             
             initStars();
 
-            document.getElementById('start-screen').classList.remove('active'); document.getElementById('in-game-ui').style.display = 'flex';
+            document.getElementById('start-screen').classList.remove('active'); 
+            document.getElementById('in-game-ui').style.display = 'flex';
             document.getElementById('active-commands-ui').style.display = 'block';
-            wave = 0; tutorialStep = 0; tutorialWait = 60; spawnTimer = 0; empTimer = 0; activeBoss = null; bossOverlay.style.opacity = '0'; iFrames = 0;
+            
             gameState = 'PLAYING'; enemies = []; currentMana = playerStats.maxMana; combo = 0; targetLock = null; lockString = ""; cmdInput.value = ""; letterProjectiles = [];
-            document.getElementById('ui-wave').textContent = `SECTOR: 0`; updatePlacementUI(); cmdInput.focus();
+            
+            // FIX: Check if they've seen the tutorial. Skip straight to shop if true!
+            if (hasSeenTutorial) {
+                wave = 0;
+                openShop();
+            } else {
+                wave = 0; tutorialStep = 0; tutorialWait = 60; spawnTimer = 0; empTimer = 0; activeBoss = null; bossOverlay.style.opacity = '0'; iFrames = 0;
+                document.getElementById('ui-wave').textContent = `SECTOR: 0`; updatePlacementUI(); cmdInput.focus();
+                hasSeenTutorial = true;
+            }
         }
 
         function startNextWave() {
@@ -1736,6 +1741,7 @@
                             if (target.hp <= 0) { 
                                 createExplosion(target.x, target.y, target.color, target.type==='boss'?50:20); 
                                 
+                                // FIX: Changed enemies[e] to target! (Sentry Point Award Bug)
                                 if(target.type === 'boss') { 
                                     playerStats.souls += 1000; 
                                     playerStats.faith = 100; 
@@ -1744,8 +1750,8 @@
                                     activeBoss = null; 
                                     bossOverlay.style.opacity = '0'; 
                                 } else { 
-                                    playerStats.souls += enemies[e].maxHp * 15; 
-                                    if(wave > 10) playerStats.zephyrite += Math.ceil(enemies[e].maxHp * 2); 
+                                    playerStats.souls += target.maxHp * 15; 
+                                    if(wave > 10) playerStats.zephyrite += Math.ceil(target.maxHp * 2); 
                                 }
                                 enemies.splice(enemies.indexOf(target), 1); 
                             }
