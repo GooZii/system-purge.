@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>System_Purge.exe v4.5 (Command Center Edition)</title>
+    <title>System_Purge.exe v4.6 (Command Center Edition)</title>
     <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -355,7 +355,7 @@
         
         let currentFinalScore = 0; 
         let focusMode = false;
-        let hasSeenTutorial = false; // <-- FIX: Tutorial Memory Variable
+        let hasSeenTutorial = false;
 
         let targetLock = null;
         let lockString = "";
@@ -418,7 +418,7 @@
 
         function shareRun() {
             let anomalyText = currentAnomaly.name !== "NONE" ? ` | 🎲 ${currentAnomaly.name}` : "";
-            let text = `System_Purge.exe [v4.5]\nSector Reached: ${currentFinalScore}${anomalyText}\nScore: ${playerStats.souls} BYTES\n\nCan you beat my system record? 💾🔥⚡️`;
+            let text = `System_Purge.exe [v4.6]\nSector Reached: ${currentFinalScore}${anomalyText}\nScore: ${playerStats.souls} BYTES\n\nCan you beat my system record? 💾🔥⚡️`;
             
             navigator.clipboard.writeText(text).then(() => {
                 let btn = document.getElementById('btn-share');
@@ -638,6 +638,10 @@
             }
         });
 
+        // =========================================================================
+        // FIX: THE NEW FLEXIBLE TYPING ENGINE
+        // Completely solves the "o locking to overclock" overlap bug!
+        // =========================================================================
         cmdInput.addEventListener('input', (e) => {
             initAudio();
             if (gameState !== 'PLAYING' && gameState !== 'START') {
@@ -648,81 +652,73 @@
 
             let val = cmdInput.value.toLowerCase().replace(/\s/g, ''); 
 
+            if (val.length === 0) {
+                targetLock = null; lockString = ""; focusMode = false; gameContainer.classList.remove('focus-mode');
+                return;
+            }
+
             if (val.length < lockString.length) {
                 targetLock = null; lockString = ""; cmdInput.value = ""; combo = 0; sndError();
                 focusMode = false; gameContainer.classList.remove('focus-mode');
                 return;
             }
 
-            let newChars = val.slice(lockString.length);
-            let validSoFar = true;
-            
-            for (let i = 0; i < newChars.length; i++) {
-                let key = newChars[i];
-
-                if (!targetLock) {
-                    let potentialTargets = [];
-                    if (gameState === 'START') {
-                        potentialTargets.push({type: 'boot', word: 'sys.boot'});
-                    } else if (gameState === 'PLAYING') {
-                        enemies.forEach(en => { if(en.shielded) potentialTargets.push({type: 'enemy', ref: en, word: en.word}); });
-                        buildings.forEach(b => { if(b.encrypted) potentialTargets.push({type: 'building', ref: b, word: b.word}); });
-                        potentialTargets.push({type: 'command', word: 'repair'});
-                        potentialTargets.push({type: 'command', word: 'overclock'});
-                        potentialTargets.push({type: 'command', word: 'purge'});
-                        
-                        potentialTargets.sort((a, b) => {
-                            let ax = a.type === 'enemy' ? a.ref.x : (a.type === 'building' ? a.ref.x : -999);
-                            let bx = b.type === 'enemy' ? b.ref.x : (b.type === 'building' ? b.ref.x : -999);
-                            return bx - ax; 
-                        });
-                    }
-
-                    let found = potentialTargets.find(t => t.word.startsWith(key));
-                    if (found) {
-                        targetLock = found; lockString = key; combo++; sndType();
-                        focusMode = true; 
-                        if (gameState === 'PLAYING') { gameContainer.classList.add('focus-mode'); placementMode = null; updatePlacementUI(); }
-                        shootLetterProjectile(key, targetLock);
-                        
-                        if (lockString === targetLock.word) {
-                            executeLock(targetLock);
-                            targetLock = null; lockString = ""; focusMode = false; gameContainer.classList.remove('focus-mode');
-                            cmdInput.value = ""; 
-                            validSoFar = false;
-                            break; 
-                        }
-                    } else {
-                        combo = 0; sndError();
-                        if (gameState === 'PLAYING') { shakeFrames = 3; document.getElementById('cmd-input').style.background = "rgba(255,0,60,0.3)"; setTimeout(() => document.getElementById('cmd-input').style.background = "transparent", 150); }
-                        targetLock = null; lockString = ""; cmdInput.value = ""; focusMode = false; gameContainer.classList.remove('focus-mode');
-                        validSoFar = false;
-                        break; 
-                    }
-                } else {
-                    let expectedKey = targetLock.word.charAt(lockString.length);
-                    if (key === expectedKey) {
-                        lockString += key; combo++; sndType();
-                        shootLetterProjectile(key, targetLock);
-                        
-                        if (lockString === targetLock.word) {
-                            executeLock(targetLock);
-                            targetLock = null; lockString = ""; focusMode = false; gameContainer.classList.remove('focus-mode');
-                            cmdInput.value = ""; 
-                            validSoFar = false;
-                            break; 
-                        }
-                    } else {
-                        combo = 0; sndError();
-                        if (gameState === 'PLAYING') { shakeFrames = 3; document.getElementById('cmd-input').style.background = "rgba(255,0,60,0.3)"; setTimeout(() => document.getElementById('cmd-input').style.background = "transparent", 150); }
-                        targetLock = null; lockString = ""; cmdInput.value = ""; focusMode = false; gameContainer.classList.remove('focus-mode');
-                        validSoFar = false;
-                        break; 
-                    }
-                }
+            let potentialTargets = [];
+            if (gameState === 'START') {
+                potentialTargets.push({type: 'boot', word: 'sys.boot'});
+            } else if (gameState === 'PLAYING') {
+                enemies.forEach(en => { if(en.shielded) potentialTargets.push({type: 'enemy', ref: en, word: en.word}); });
+                buildings.forEach(b => { if(b.encrypted) potentialTargets.push({type: 'building', ref: b, word: b.word}); });
+                potentialTargets.push({type: 'command', word: 'repair'});
+                potentialTargets.push({type: 'command', word: 'overclock'});
+                potentialTargets.push({type: 'command', word: 'purge'});
             }
-            
-            if (validSoFar) cmdInput.value = lockString;
+
+            // Instead of hard-locking to the first letter and throwing errors later,
+            // we filter all possibilities dynamically based on everything typed so far!
+            let matches = potentialTargets.filter(t => t.word.startsWith(val));
+
+            if (matches.length > 0) {
+                // Successfully kept typing a valid word!
+                let charsTyped = val.length - lockString.length;
+                combo += charsTyped; 
+                sndType();
+
+                lockString = val;
+                cmdInput.value = lockString;
+                focusMode = true; 
+                if (gameState === 'PLAYING') { gameContainer.classList.add('focus-mode'); placementMode = null; updatePlacementUI(); }
+
+                // Rank the possibilities. Exact matches trigger first, then closest enemies.
+                matches.sort((a, b) => {
+                    if (a.word === val && b.word !== val) return -1;
+                    if (b.word === val && a.word !== val) return 1;
+                    let ax = a.type === 'enemy' ? a.ref.x : (a.type === 'building' ? a.ref.x : -999);
+                    let bx = b.type === 'enemy' ? b.ref.x : (b.type === 'building' ? b.ref.x : -999);
+                    return bx - ax; 
+                });
+
+                targetLock = matches[0]; // Highlights the closest matched target
+
+                let lastChar = val.slice(-1);
+                shootLetterProjectile(lastChar, targetLock);
+                
+                // If we finished typing the target's word perfectly!
+                if (matches[0].word === val) {
+                    executeLock(matches[0]);
+                    targetLock = null; lockString = ""; focusMode = false; gameContainer.classList.remove('focus-mode');
+                    cmdInput.value = ""; 
+                }
+            } else {
+                // It was a true typo. Break lock and clear it!
+                combo = 0; sndError();
+                if (gameState === 'PLAYING') { 
+                    shakeFrames = 3; 
+                    document.getElementById('cmd-input').style.background = "rgba(255,0,60,0.3)"; 
+                    setTimeout(() => document.getElementById('cmd-input').style.background = "transparent", 150); 
+                }
+                targetLock = null; lockString = ""; cmdInput.value = ""; focusMode = false; gameContainer.classList.remove('focus-mode');
+            }
         });
 
         function shootLetterProjectile(key, target) {
@@ -733,8 +729,8 @@
             let tx = canvas.width / 2;
             let ty = canvas.height / 2;
             
-            if (target.type === 'enemy') { tx = target.ref.x; ty = target.ref.y; }
-            else if (target.type === 'building') { tx = target.ref.x; ty = target.ref.y; }
+            if (target && target.type === 'enemy') { tx = target.ref.x; ty = target.ref.y; }
+            else if (target && target.type === 'building') { tx = target.ref.x; ty = target.ref.y; }
             
             letterProjectiles.push({
                 char: key.toUpperCase(),
@@ -978,7 +974,6 @@
             
             gameState = 'PLAYING'; enemies = []; currentMana = playerStats.maxMana; combo = 0; targetLock = null; lockString = ""; cmdInput.value = ""; letterProjectiles = [];
             
-            // FIX: Check if they've seen the tutorial. Skip straight to shop if true!
             if (hasSeenTutorial) {
                 wave = 0;
                 openShop();
@@ -1741,7 +1736,6 @@
                             if (target.hp <= 0) { 
                                 createExplosion(target.x, target.y, target.color, target.type==='boss'?50:20); 
                                 
-                                // FIX: Changed enemies[e] to target! (Sentry Point Award Bug)
                                 if(target.type === 'boss') { 
                                     playerStats.souls += 1000; 
                                     playerStats.faith = 100; 
